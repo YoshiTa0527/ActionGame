@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using System.Linq;
-
+using Cinemachine;
 
 /// <summary>
 /// 敵をロックオンする。3/3ロック送り機能を追加することとm_targetがnullの時の対処
@@ -17,34 +17,48 @@ public class LockOnController : MonoBehaviour
     List<EnemyTargetController> m_orderedTargets = new List<EnemyTargetController>();
     EnemyTargetController m_target;
     EnemyTargetController m_currentTarget;
+    /// <summary>ロックオン時に使うVcam</summary>
+    CinemachineVirtualCamera m_targetCamera;
+    /// <summary>vcamのプライオリティの初期値を覚えておく</summary>
+    int m_priority;
+    /// <summary>ターゲットグループに追加するときのradius</summary>
+    [SerializeField] float m_radius = 5f;
+    [SerializeField] float m_weight = 5f;
+
     public GameObject GetTarget { get { return m_target.gameObject; } }
     GameObject m_enemyParent;
     public static bool IsLock { get; set; }
     GameObject player;
     int m_targetIndex = 0;
     float m_timer = 0;
+    CinemachineTargetGroup m_targetGroup;
 
     private void Start()
     {
         m_enemyParent = GameObject.FindGameObjectWithTag("EnemyParent");
         IsLock = false;
+        m_targetGroup = FindObjectOfType<CinemachineTargetGroup>();
+        player = GameObject.FindGameObjectWithTag("Player");
+        /*ターゲットカメラに関する処理*/
+        m_targetCamera = GameObject.FindGameObjectWithTag("TargetCamera").gameObject.GetComponent<CinemachineVirtualCamera>();
+        m_priority = m_targetCamera.Priority;
+        m_targetCamera.Priority = -1;
+
     }
 
     private void Update()
     {
-        player = GameObject.FindGameObjectWithTag("Player");
         if (!player) return;
         m_targets.Clear();
 
         // 現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
         if (m_target && (!m_target.IsHookable || Vector3.Distance(m_target.transform.position, player.transform.position) > m_lockOnRange))
         {
-            m_target = null;
             UnLockEnemy();
+            m_target = null;
+
             Debug.Log("target lost.");
         }
-
-
 
         /*とりあえず敵を全て取得する*/
         EnemyTargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<EnemyTargetController>();
@@ -62,8 +76,8 @@ public class LockOnController : MonoBehaviour
         /*もしロックオン状態だったら、ターゲットの位置にロックオンカーソルを表示し続ける*/
         if (IsLock && m_lockOnMarkerImage && m_target)
         {
-
             m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
+
         }
         else { UnLockEnemy(); }
 
@@ -71,17 +85,16 @@ public class LockOnController : MonoBehaviour
         {
             /*複数の敵がロックオン可能な場合十字キー左右で敵の選択*/
             float horizon = Input.GetAxis("D-Pad H");
-            if (horizon > 0 || horizon < 0)
+            if (horizon > 0)
             {
                 /*感度が良すぎるので少し待ってからターゲットを切り替えたい*/
                 m_timer += Time.deltaTime;
                 if (m_timer > 0.1f)
                 {
                     m_timer = 0;
-                    m_targetIndex += (int)horizon;
+
                     Debug.Log($"Input::十字キー左右が押された。{m_targetIndex.ToString()}");
                     m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
-
                 }
                 m_target = m_orderedTargets[m_targetIndex];
             }
@@ -94,8 +107,6 @@ public class LockOnController : MonoBehaviour
             Debug.Log("スティック押し込み");
             if (!IsLock)
             {
-
-
                 DetectNearestTarget();
                 m_target = m_orderedTargets[m_targetIndex];
                 LockOnEnemy();
@@ -113,6 +124,8 @@ public class LockOnController : MonoBehaviour
     {
         Debug.Log("Lock on Enemy");
         IsLock = true;
+        if (m_targetGroup) m_targetGroup.AddMember(m_target.transform, m_weight, m_radius);
+        if (m_targetCamera) m_targetCamera.Priority = m_priority;
     }
     /// <summary>
     /// 敵のロックオンを外す
@@ -122,6 +135,9 @@ public class LockOnController : MonoBehaviour
         Debug.Log("UnLock Enemy");
         IsLock = false;
         HideMarker();
+        if (m_targetGroup.m_Targets.Length > 1) m_targetGroup.RemoveMember(m_target.transform);
+        if (m_targetCamera) m_targetCamera.Priority = -1;
+
     }
     /// <summary>
     /// 指定された位置にマーカーを表示する

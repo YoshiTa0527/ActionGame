@@ -25,8 +25,7 @@ public class PlayerController : MonoBehaviour
     private void Start()
     {
         m_rb = GetComponent<Rigidbody>();
-        m_loc = GetComponent<LockOnController>();
-
+        m_loc = FindObjectOfType<LockOnController>();
     }
 
     private void Update()
@@ -53,7 +52,6 @@ public class PlayerController : MonoBehaviour
                 /*ロックオン状態でなければ普通に動く*/
                 Quaternion targetRotation = Quaternion.LookRotation(dir);
                 this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
-
             }
             else
             {
