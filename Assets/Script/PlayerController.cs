@@ -20,12 +20,14 @@ public class PlayerController : MonoBehaviour
     /// <summary>ロックオンに関するフィールド</summary>
     LockOnController m_loc;
 
+    [SerializeField] CapsuleCollider m_colider;
     Rigidbody m_rb;
 
     private void Start()
     {
         m_rb = GetComponent<Rigidbody>();
         m_loc = FindObjectOfType<LockOnController>();
+        m_colider = GetComponent<CapsuleCollider>();
     }
 
     private void Update()
@@ -43,6 +45,7 @@ public class PlayerController : MonoBehaviour
 
         if (IsGround())
         {
+            Debug.Log($"接地している{m_hit.collider.name}");
             if (dir == Vector3.zero)
             {
                 m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
@@ -66,30 +69,30 @@ public class PlayerController : MonoBehaviour
             if (Input.GetButtonDown("Jump"))
             {
                 m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
-
             }
+        }
+        else
+        {
+            Debug.Log($"接地していない");
         }
 
     }
 
+    RaycastHit m_hit;
     bool IsGround()
     {
-        Ray ray = new Ray(this.transform.position, Vector3.down);
-
-        bool isGround = Physics.SphereCast(ray, m_sphereRadius, m_rayMaxDistance, m_groundMask);
-
-
+        Ray ray = new Ray(this.transform.position + m_colider.center, Vector3.down);
+        bool isGround = Physics.SphereCast(ray, m_sphereRadius, out m_hit, m_rayMaxDistance, m_groundMask);
+        Debug.DrawRay(this.transform.position + m_colider.center, Vector3.down, Color.red);
         return isGround;
     }
-
+    [SerializeField]
+    bool isEnable = false;
     private void OnDrawGizmos()
     {
-        Vector3 start = this.transform.position;   // start: オブジェクトの中心
-        Vector3 end = start + Vector3.down * m_rayMaxDistance;  // end: start から真下の地点
-
-
-        Gizmos.DrawSphere(end, m_sphereRadius);
+        if (isEnable == false)
+            return;
+        Gizmos.DrawWireSphere(this.transform.position + m_colider.center + Vector3.down * m_rayMaxDistance, m_sphereRadius);
     }
-
 
 }

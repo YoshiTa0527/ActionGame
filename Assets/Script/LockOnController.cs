@@ -28,7 +28,7 @@ public class LockOnController : MonoBehaviour
     public GameObject GetTarget { get { return m_target.gameObject; } }
     GameObject m_enemyParent;
     public static bool IsLock { get; set; }
-    GameObject player;
+    GameObject m_player;
     int m_targetIndex = 0;
     float m_timer = 0;
     CinemachineTargetGroup m_targetGroup;
@@ -38,7 +38,7 @@ public class LockOnController : MonoBehaviour
         m_enemyParent = GameObject.FindGameObjectWithTag("EnemyParent");
         IsLock = false;
         m_targetGroup = FindObjectOfType<CinemachineTargetGroup>();
-        player = GameObject.FindGameObjectWithTag("Player");
+        m_player = GameObject.FindGameObjectWithTag("Player");
         /*ターゲットカメラに関する処理*/
         m_targetCamera = GameObject.FindGameObjectWithTag("TargetCamera").gameObject.GetComponent<CinemachineVirtualCamera>();
         m_priority = m_targetCamera.Priority;
@@ -48,11 +48,11 @@ public class LockOnController : MonoBehaviour
 
     private void Update()
     {
-        if (!player) return;
+        if (!m_player) return;
         m_targets.Clear();
 
         // 現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
-        if (m_target && (!m_target.IsHookable || Vector3.Distance(m_target.transform.position, player.transform.position) > m_lockOnRange))
+        if (m_target && (!m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange))
         {
             UnLockEnemy();
             m_target = null;
@@ -66,7 +66,7 @@ public class LockOnController : MonoBehaviour
         /*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
         foreach (var t in targets)
         {
-            if (t.IsHookable && m_lockOnRange > Vector3.Distance(player.transform.position, t.transform.position))
+            if (t.IsHookable && m_lockOnRange > Vector3.Distance(m_player.transform.position, t.transform.position))
             {
                 m_targets.Add(t);
                 Debug.Log($"ロックオン可能な敵の数{m_targets.Count.ToString()}");
@@ -124,6 +124,7 @@ public class LockOnController : MonoBehaviour
     {
         Debug.Log("Lock on Enemy");
         IsLock = true;
+        if (m_target) m_player.transform.LookAt(m_target.transform);
         if (m_targetGroup) m_targetGroup.AddMember(m_target.transform, m_weight, m_radius);
         if (m_targetCamera) m_targetCamera.Priority = m_priority;
     }
@@ -168,7 +169,7 @@ public class LockOnController : MonoBehaviour
     /// <returns></returns>
     void DetectNearestTarget()
     {
-        m_orderedTargets = m_targets.OrderBy(t => Vector3.Distance(player.transform.position, t.transform.position)).ToList();
+        m_orderedTargets = m_targets.OrderBy(t => Vector3.Distance(m_player.transform.position, t.transform.position)).ToList();
 
     }
 
