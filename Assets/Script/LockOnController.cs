@@ -6,14 +6,16 @@ using System.Linq;
 using Cinemachine;
 
 /// <summary>
-/// 敵をロックオンする。3/3ロック送り機能を追加することとm_targetがnullの時の対処
+/// 敵をロックオンする。
 /// </summary>
 public class LockOnController : MonoBehaviour
 {
-    [SerializeField] Image m_lockOnMarkerImage;
+    [SerializeField] Image m_lockOnMarkerImage = null;
     [SerializeField] float m_lockOnRange = 5f;
+    SphereCollider m_serachRange;
     /// <summary>現在ターゲット可能な敵のリスト</summary>
     List<EnemyTargetController> m_targets = new List<EnemyTargetController>();
+    /// <summary>近い順に並び変えた敵のリスト</summary>
     List<EnemyTargetController> m_orderedTargets = new List<EnemyTargetController>();
     EnemyTargetController m_target;
     EnemyTargetController m_currentTarget;
@@ -36,11 +38,12 @@ public class LockOnController : MonoBehaviour
     private void Start()
     {
         m_enemyParent = GameObject.FindGameObjectWithTag("EnemyParent");
-        IsLock = false;
-        m_targetGroup = FindObjectOfType<CinemachineTargetGroup>();
         m_player = GameObject.FindGameObjectWithTag("Player");
+        m_serachRange = GetComponent<SphereCollider>();
+        IsLock = false;
         /*ターゲットカメラに関する処理*/
         m_targetCamera = GameObject.FindGameObjectWithTag("TargetCamera").gameObject.GetComponent<CinemachineVirtualCamera>();
+        m_targetGroup = FindObjectOfType<CinemachineTargetGroup>();
         m_priority = m_targetCamera.Priority;
         m_targetCamera.Priority = -1;
 
@@ -49,35 +52,44 @@ public class LockOnController : MonoBehaviour
     private void Update()
     {
         if (!m_player) return;
-        m_targets.Clear();
-
         // 現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
-        if (m_target && (!m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange))
+        //if (m_target && !m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
+        //{
+        //    UnLockEnemy();
+        //    m_target = null;
+
+        //    Debug.Log("target lost.");
+        //}
+
+        if (m_target)
         {
-            UnLockEnemy();
-            m_target = null;
-
-            Debug.Log("target lost.");
-        }
-
-        /*とりあえず敵を全て取得する*/
-        EnemyTargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<EnemyTargetController>();
-
-        /*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
-        foreach (var t in targets)
-        {
-            if (t.IsHookable && m_lockOnRange > Vector3.Distance(m_player.transform.position, t.transform.position))
+            if (m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
             {
-                m_targets.Add(t);
-                Debug.Log($"ロックオン可能な敵の数{m_targets.Count.ToString()}");
+                UnLockEnemy();
+                m_target = null;
+
+                Debug.Log("target lost.");
             }
+
         }
+
+        ///*とりあえず敵を全て取得する*/
+        //EnemyTargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<EnemyTargetController>();
+
+        ///*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
+        //foreach (var t in targets)
+        //{
+        //    if (t.IsHookable && m_lockOnRange > Vector3.Distance(m_player.transform.position, t.transform.position))
+        //    {
+        //        m_targets.Add(t);
+        //        Debug.Log($"ロックオン可能な敵の数{m_targets.Count.ToString()}");
+        //    }
+        //}
 
         /*もしロックオン状態だったら、ターゲットの位置にロックオンカーソルを表示し続ける*/
         if (IsLock && m_lockOnMarkerImage && m_target)
         {
             m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
-
         }
         else { UnLockEnemy(); }
 
@@ -169,8 +181,26 @@ public class LockOnController : MonoBehaviour
     /// <returns></returns>
     void DetectNearestTarget()
     {
+        Debug.Log("リストの中の敵を並び替える");
         m_orderedTargets = m_targets.OrderBy(t => Vector3.Distance(m_player.transform.position, t.transform.position)).ToList();
+    }
 
+    private void OnTriggerEnter(Collider other)
+    {
+        if (other.tag == "Enemy")
+        {
+            Debug.Log("敵をリストに入れた");
+            m_targets.Add(other.gameObject.GetComponent<EnemyTargetController>());
+        }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (other.tag == "Enemy")
+        {
+            Debug.Log("敵をリストから外した");
+            m_targets.Remove(other.gameObject.GetComponent<EnemyTargetController>());
+        }
     }
 
 }

@@ -23,10 +23,12 @@ public class EnemyTargetController : MonoBehaviour
     private void OnBecameVisible()
     {
         m_isTargetable = true;
+        Debug.Log("OnBecameVisible()");
     }
 
     private void OnBecameInvisible()
     {
         m_isTargetable = false;
+        Debug.Log("OnBecameInvisible()");
     }
 }

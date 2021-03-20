@@ -41,7 +41,6 @@ public class GrapplingManager : MonoBehaviour
                 }
                 else IsHooked = false;
             }
-
         }
         else
         {
@@ -87,9 +86,6 @@ public class GrapplingManager : MonoBehaviour
             joint.xMotion = ConfigurableJointMotion.Limited;
             joint.yMotion = ConfigurableJointMotion.Limited;
             joint.zMotion = ConfigurableJointMotion.Limited;
-
-
-
         }
         else
         {
@@ -108,9 +104,8 @@ public class GrapplingManager : MonoBehaviour
     void PullTarget(ConfigurableJoint joint, GameObject target)
     {
         var cj = joint.linearLimit;
-        cj.limit = 2f;
+        cj.limit = m_limit;
         joint.linearLimit = cj;
-
     }
 
     void DrawLine(Vector3 source, Vector3 destination)

@@ -13,6 +13,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_movingSpeed = 5f;
     [SerializeField] float m_turnSpeed = 5f;
     [SerializeField] float m_jumpPower = 5f;
+    [SerializeField] float m_lockOnMovingSpeed = 4f;
+    float m_spdTemp;
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
     [SerializeField] float m_rayMaxDistance = 1f;
@@ -22,26 +24,25 @@ public class PlayerController : MonoBehaviour
 
     [SerializeField] CapsuleCollider m_colider;
     Rigidbody m_rb;
+    Animator m_anim;
 
     private void Start()
     {
         m_rb = GetComponent<Rigidbody>();
         m_loc = FindObjectOfType<LockOnController>();
         m_colider = GetComponent<CapsuleCollider>();
+        m_anim = GetComponent<Animator>();
+        m_spdTemp = m_movingSpeed;
     }
 
     private void Update()
     {
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
-
         Vector3 dir = Vector3.forward * v + Vector3.right * h;
-
-
         //// カメラを基準に入力が上下=奥/手前, 左右=左右にキャラクターを向ける
         dir = Camera.main.transform.TransformDirection(dir);    // メインカメラを基準に入力方向のベクトルを変換する
         dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-
 
         if (IsGround())
         {
@@ -62,6 +63,7 @@ public class PlayerController : MonoBehaviour
                 this.transform.LookAt(m_loc.GetTarget.transform.position);
             }
 
+            //here
             Vector3 velo = dir.normalized * m_movingSpeed; // 入力した方向に移動する
             velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
             m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
@@ -76,6 +78,46 @@ public class PlayerController : MonoBehaviour
             Debug.Log($"接地していない");
         }
 
+        if (m_anim)
+        {
+            if (!LockOnController.IsLock)
+            {
+                m_movingSpeed = m_spdTemp;
+                m_anim.SetFloat("spd", m_rb.velocity.magnitude);
+                m_anim.SetInteger("LockOnMotion", 0);
+            }
+            else
+            {
+                Debug.Log(m_movingSpeed.ToString());
+                if ((h == 0 && v == 0) || v > 0)
+                {
+                    m_movingSpeed = m_spdTemp;
+                    m_anim.SetFloat("spd", m_rb.velocity.magnitude);
+                    m_anim.SetInteger("LockOnMotion", 0);
+                }
+                if (v < 0)
+                {
+                    //後退
+                    m_movingSpeed = m_lockOnMovingSpeed;
+                    m_anim.SetInteger("LockOnMotion", 1);
+                }
+                if (v == 0)
+                {
+                    if (h > 0)
+                    {
+                        //右歩き
+                        m_movingSpeed = m_lockOnMovingSpeed;
+                        m_anim.SetInteger("LockOnMotion", 2);
+                    }
+                    else if (h < 0)
+                    {
+                        m_movingSpeed = m_lockOnMovingSpeed;
+                        m_anim.SetInteger("LockOnMotion", 3);
+                    }
+                }
+
+            }
+        }
     }
 
     RaycastHit m_hit;
