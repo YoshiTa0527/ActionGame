@@ -12,7 +12,6 @@ public class LockOnController : MonoBehaviour
 {
     [SerializeField] Image m_lockOnMarkerImage = null;
     [SerializeField] float m_lockOnRange = 5f;
-    SphereCollider m_serachRange;
     /// <summary>現在ターゲット可能な敵のリスト</summary>
     List<EnemyTargetController> m_targets = new List<EnemyTargetController>();
     /// <summary>近い順に並び変えた敵のリスト</summary>
@@ -21,6 +20,8 @@ public class LockOnController : MonoBehaviour
     EnemyTargetController m_currentTarget;
     /// <summary>ロックオン時に使うVcam</summary>
     CinemachineVirtualCamera m_targetCamera;
+    CinemachineFreeLook m_fcum;
+    Transform m_followTemp, m_lookAtTemp;
     /// <summary>vcamのプライオリティの初期値を覚えておく</summary>
     int m_priority;
     /// <summary>ターゲットグループに追加するときのradius</summary>
@@ -39,78 +40,78 @@ public class LockOnController : MonoBehaviour
     {
         m_enemyParent = GameObject.FindGameObjectWithTag("EnemyParent");
         m_player = GameObject.FindGameObjectWithTag("Player");
-        m_serachRange = GetComponent<SphereCollider>();
         IsLock = false;
         /*ターゲットカメラに関する処理*/
         m_targetCamera = GameObject.FindGameObjectWithTag("TargetCamera").gameObject.GetComponent<CinemachineVirtualCamera>();
         m_targetGroup = FindObjectOfType<CinemachineTargetGroup>();
         m_priority = m_targetCamera.Priority;
         m_targetCamera.Priority = -1;
+        m_fcum = GameObject.FindGameObjectWithTag("FreeLookCamera1").gameObject.GetComponent<CinemachineFreeLook>();
+        if (m_fcum)
+        {
+            m_followTemp = m_fcum.Follow;
+            m_lookAtTemp = m_fcum.LookAt;
+        }
 
     }
 
     private void Update()
     {
         if (!m_player) return;
-        // 現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
-        //if (m_target && !m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
-        //{
-        //    UnLockEnemy();
-        //    m_target = null;
-
-        //    Debug.Log("target lost.");
-        //}
-
+        m_targets.Clear();
+        //現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
         if (m_target)
         {
-            if (m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
+            if (!m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
             {
                 UnLockEnemy();
                 m_target = null;
-
                 Debug.Log("target lost.");
             }
-
         }
 
         ///*とりあえず敵を全て取得する*/
-        //EnemyTargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<EnemyTargetController>();
+        EnemyTargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<EnemyTargetController>();
 
-        ///*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
-        //foreach (var t in targets)
-        //{
-        //    if (t.IsHookable && m_lockOnRange > Vector3.Distance(m_player.transform.position, t.transform.position))
-        //    {
-        //        m_targets.Add(t);
-        //        Debug.Log($"ロックオン可能な敵の数{m_targets.Count.ToString()}");
-        //    }
-        //}
-
-        /*もしロックオン状態だったら、ターゲットの位置にロックオンカーソルを表示し続ける*/
-        if (IsLock && m_lockOnMarkerImage && m_target)
+        /*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
+        foreach (var t in targets)
         {
-            m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
-        }
-        else { UnLockEnemy(); }
-
-        if (IsLock && m_orderedTargets.Count >= 0)
-        {
-            /*複数の敵がロックオン可能な場合十字キー左右で敵の選択*/
-            float horizon = Input.GetAxis("D-Pad H");
-            if (horizon > 0)
+            if (t.IsHookable && m_lockOnRange > Vector3.Distance(m_player.transform.position, t.transform.position))
             {
-                /*感度が良すぎるので少し待ってからターゲットを切り替えたい*/
-                m_timer += Time.deltaTime;
-                if (m_timer > 0.1f)
-                {
-                    m_timer = 0;
-
-                    Debug.Log($"Input::十字キー左右が押された。{m_targetIndex.ToString()}");
-                    m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
-                }
-                m_target = m_orderedTargets[m_targetIndex];
+                m_targets.Add(t);
+                Debug.Log($"ロックオン可能な敵の数{m_targets.Count}");
             }
         }
+
+        if (IsLock)
+        {
+            if (m_fcum) m_fcum.transform.position = m_targetCamera.transform.position;
+            if (m_lockOnMarkerImage && m_target)
+            {
+                m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
+            }
+
+
+            if (m_orderedTargets.Count >= 0)
+            {
+                /*複数の敵がロックオン可能な場合十字キー左右で敵の選択*/
+                float horizon = Input.GetAxis("D-Pad H");
+                if (horizon > 0)
+                {
+                    /*感度が良すぎるので少し待ってからターゲットを切り替えたい*/
+                    m_timer += Time.deltaTime;
+                    if (m_timer > 0.1f)
+                    {
+                        m_timer = 0;
+
+                        Debug.Log($"Input::十字キー左右が押された。{m_targetIndex.ToString()}");
+                        m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
+                    }
+                    m_target = m_orderedTargets[m_targetIndex];
+                }
+            }
+        }
+        else { UnLockEnemy(); }
 
         /*スティック押し込みで敵をロックオンする*/
         if (Input.GetButtonDown("PadStickPush") && m_targets.Count > 0)
@@ -139,6 +140,12 @@ public class LockOnController : MonoBehaviour
         if (m_target) m_player.transform.LookAt(m_target.transform);
         if (m_targetGroup) m_targetGroup.AddMember(m_target.transform, m_weight, m_radius);
         if (m_targetCamera) m_targetCamera.Priority = m_priority;
+        /*フリールックのfollowとlookAtを空にしないとtransformを操作できない*/
+        if (m_fcum)
+        {
+            m_fcum.Follow = null;
+            m_fcum.LookAt = null;
+        }
     }
     /// <summary>
     /// 敵のロックオンを外す
@@ -150,6 +157,13 @@ public class LockOnController : MonoBehaviour
         HideMarker();
         if (m_targetGroup.m_Targets.Length > 1) m_targetGroup.RemoveMember(m_target.transform);
         if (m_targetCamera) m_targetCamera.Priority = -1;
+        /*フリールックのtransformにグループカメラのそれを代入し、フリールックの設定を元に戻す*/
+        if (m_fcum)
+        {
+
+            m_fcum.Follow = m_followTemp;
+            m_fcum.LookAt = m_lookAtTemp;
+        }
 
     }
     /// <summary>
@@ -183,24 +197,6 @@ public class LockOnController : MonoBehaviour
     {
         Debug.Log("リストの中の敵を並び替える");
         m_orderedTargets = m_targets.OrderBy(t => Vector3.Distance(m_player.transform.position, t.transform.position)).ToList();
-    }
-
-    private void OnTriggerEnter(Collider other)
-    {
-        if (other.tag == "Enemy")
-        {
-            Debug.Log("敵をリストに入れた");
-            m_targets.Add(other.gameObject.GetComponent<EnemyTargetController>());
-        }
-    }
-
-    private void OnTriggerExit(Collider other)
-    {
-        if (other.tag == "Enemy")
-        {
-            Debug.Log("敵をリストから外した");
-            m_targets.Remove(other.gameObject.GetComponent<EnemyTargetController>());
-        }
     }
 
 }

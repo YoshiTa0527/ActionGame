@@ -307,7 +307,7 @@ InputManager:
     snap: 0
     invert: 0
     type: 2
-    axis: 2
+    axis: 3
     joyNum: 0
   - serializedVersion: 3
     m_Name: PadStickRY
@@ -323,14 +323,14 @@ InputManager:
     snap: 0
     invert: 0
     type: 2
-    axis: 3
+    axis: 4
     joyNum: 0
   - serializedVersion: 3
     m_Name: PadStickPush
     descriptiveName: 
     descriptiveNegativeName: 
     negativeButton: 
-    positiveButton: joystick button 11
+    positiveButton: joystick button 9
     altNegativeButton: 
     altPositiveButton: 
     gravity: 1000

@@ -5,17 +5,40 @@ using System.Linq;
 
 public class Test : MonoBehaviour
 {
-    // Start is called before the first frame update
-    void Start()
+    [SerializeField] Cinemachine.CinemachineFreeLook m_fcum;
+    Transform m_followTemp, m_lookAtTemp;
+    bool m_isPushedButton = false;
+
+    private void Start()
     {
-        List<int> intlist = new List<int> { 1, 5, 4, 3 };
-        List<int> orderedList = intlist.OrderBy(i => i).ToList();
-        orderedList.ForEach(i => Debug.Log(i.ToString()));
+        m_followTemp = m_fcum.Follow;
+        m_lookAtTemp = m_fcum.LookAt;
     }
 
     // Update is called once per frame
     void Update()
     {
+        if (Input.GetButton("PadStickPush"))
+        {
+            Debug.Log("Test::PushedButton");
+        }
 
+        if (Input.GetButtonDown("Jump"))
+        {
+            if (!m_isPushedButton)
+            {
+                Debug.Log("Test");
+                m_isPushedButton = true;
+                m_fcum.Follow = null;
+                m_fcum.LookAt = null;
+                m_fcum.transform.position = Vector3.zero;
+            }
+            else
+            {
+                m_isPushedButton = false;
+                m_fcum.Follow = m_followTemp;
+                m_fcum.LookAt = m_lookAtTemp;
+            }
+        }
     }
 }

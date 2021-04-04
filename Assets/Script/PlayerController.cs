@@ -19,10 +19,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_sphereRadius = 1f;
     [SerializeField] float m_rayMaxDistance = 1f;
     [SerializeField] LayerMask m_groundMask;
+    /// <summary>このコライダーを中心に設置判定のrayを出す</summary>
+    [SerializeField] CapsuleCollider m_colider;
     /// <summary>ロックオンに関するフィールド</summary>
     LockOnController m_loc;
 
-    [SerializeField] CapsuleCollider m_colider;
+
+
     Rigidbody m_rb;
     Animator m_anim;
 
@@ -59,7 +62,7 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                /*ロックオン状態なら敵を見ながら動く*/
+                /*敵を見ながら動く*/
                 this.transform.LookAt(m_loc.GetTarget.transform.position);
             }
 
@@ -70,7 +73,8 @@ public class PlayerController : MonoBehaviour
 
             if (Input.GetButtonDown("Jump"))
             {
-                m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
+                //m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
+                /*とりあえずなにもしない*/
             }
         }
         else
@@ -128,8 +132,7 @@ public class PlayerController : MonoBehaviour
         Debug.DrawRay(this.transform.position + m_colider.center, Vector3.down, Color.red);
         return isGround;
     }
-    [SerializeField]
-    bool isEnable = false;
+    [SerializeField] bool isEnable = false;
     private void OnDrawGizmos()
     {
         if (isEnable == false)

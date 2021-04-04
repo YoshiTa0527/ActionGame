@@ -7,6 +7,7 @@ TagManager:
   - Enemy
   - EnemyParent
   - TargetCamera
+  - FreeLookCamera1
   layers:
   - Default
   - TransparentFX
