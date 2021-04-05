@@ -87,42 +87,47 @@ public class PlayerController : MonoBehaviour
             if (!LockOnController.IsLock)
             {
                 m_movingSpeed = m_spdTemp;
+                m_anim.SetBool("isLockOn", false);
                 m_anim.SetFloat("spd", m_rb.velocity.magnitude);
                 m_anim.SetInteger("LockOnMotion", 0);
             }
             else
             {
-                Debug.Log(m_movingSpeed.ToString());
-                if ((h == 0 && v == 0) || v > 0)
+                Debug.Log(PlayerAnimation.PlayerDirState.ToString());
+                m_anim.SetBool("isLockOn", true);
+                if (IsGround())
                 {
-                    m_movingSpeed = m_spdTemp;
-                    m_anim.SetFloat("spd", m_rb.velocity.magnitude);
-                    m_anim.SetInteger("LockOnMotion", 0);
-                }
-                if (v < 0)
-                {
-                    //後退
-                    m_movingSpeed = m_lockOnMovingSpeed;
-                    m_anim.SetInteger("LockOnMotion", 1);
-                }
-                if (v == 0)
-                {
-                    if (h > 0)
+                    switch (PlayerAnimation.PlayerDirState)
                     {
-                        //右歩き
-                        m_movingSpeed = m_lockOnMovingSpeed;
-                        m_anim.SetInteger("LockOnMotion", 2);
-                    }
-                    else if (h < 0)
-                    {
-                        m_movingSpeed = m_lockOnMovingSpeed;
-                        m_anim.SetInteger("LockOnMotion", 3);
+                        case PlayerMovingDirection.Neutral:
+                            m_anim.SetInteger("LockOnMotion", 0);
+                            break;
+                        case PlayerMovingDirection.Forward:
+                            m_movingSpeed = m_lockOnMovingSpeed;
+                            m_anim.SetInteger("LockOnMotion", 1);
+                            break;
+                        case PlayerMovingDirection.Right:
+                            m_movingSpeed = m_lockOnMovingSpeed;
+                            m_anim.SetInteger("LockOnMotion", 3);
+                            break;
+                        case PlayerMovingDirection.Left:
+                            m_movingSpeed = m_lockOnMovingSpeed;
+                            m_anim.SetInteger("LockOnMotion", 4);
+                            break;
+                        case PlayerMovingDirection.Back:
+                            m_movingSpeed = m_lockOnMovingSpeed;
+                            m_anim.SetInteger("LockOnMotion", 2);
+                            break;
+                        default:
+                            break;
                     }
                 }
 
             }
         }
     }
+
+
 
     RaycastHit m_hit;
     bool IsGround()
