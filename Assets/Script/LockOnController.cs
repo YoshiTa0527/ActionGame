@@ -45,8 +45,12 @@ public class LockOnController : MonoBehaviour
         /*ターゲットカメラに関する処理*/
         m_targetCamera = GameObject.FindGameObjectWithTag("TargetCamera").gameObject.GetComponent<CinemachineVirtualCamera>();
         m_targetGroup = FindObjectOfType<CinemachineTargetGroup>();
-        m_priority = m_targetCamera.Priority;
-        m_targetCamera.Priority = -1;
+        if (m_targetCamera)
+        {
+            m_priority = m_targetCamera.Priority;
+            m_targetCamera.Priority = -1;
+            m_targetCamera.Follow = null;
+        }
         m_fcum = GameObject.FindGameObjectWithTag("FreeLookCamera1").gameObject.GetComponent<CinemachineFreeLook>();
         if (m_fcum)
         {
@@ -108,12 +112,16 @@ public class LockOnController : MonoBehaviour
                 if (DpadController.m_dpadRight)
                 {
                     m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
-                    LockOnEnemy(m_orderedTargets[m_targetIndex]);
+                    Debug.Log("LockOnController::IsHookable" + m_orderedTargets[m_targetIndex].IsHookable);
+                    if (m_orderedTargets[m_targetIndex].IsHookable) LockOnEnemy(m_orderedTargets[m_targetIndex]);
                 }
-
             }
         }
-        else { UnLockEnemy(); }
+        else
+        {
+            UnLockEnemy();
+            if (m_targetCamera) m_targetCamera.transform.position = m_fcum.transform.position;
+        }
 
         /*スティック押し込みで敵をロックオンする*/
         if (Input.GetButtonDown("PadStickPush") && m_targets.Count > 0)
@@ -137,17 +145,26 @@ public class LockOnController : MonoBehaviour
     public void LockOnEnemy(EnemyTargetController target)
     {
         Debug.Log("Lock on Enemy");
-        IsLock = true;
+        if (m_target == target)
+            return;
         m_target = target;
         if (m_target) m_player.transform.LookAt(m_target.transform);
         if (m_targetGroup) m_targetGroup.AddMember(m_target.transform, m_weight, m_radius);
-        if (m_targetCamera) m_targetCamera.Priority = m_priority;
-        /*フリールックのfollowとlookAtを空にしないとtransformを操作できない*/
-        if (m_fcum)
+        if (!IsLock)
         {
-            m_fcum.Follow = null;
-            m_fcum.LookAt = null;
+            if (m_targetCamera)
+            {
+                m_targetCamera.Follow = m_followTemp;
+                m_targetCamera.Priority = m_priority;
+            }
+            /*フリールックのfollowとlookAtを空にしないとtransformを操作できない*/
+            if (m_fcum)
+            {
+                m_fcum.Follow = null;
+                m_fcum.LookAt = null;
+            }
         }
+        IsLock = true;
     }
     /// <summary>
     /// 敵のロックオンを外す
@@ -158,14 +175,18 @@ public class LockOnController : MonoBehaviour
         IsLock = false;
         HideMarker();
         if (m_targetGroup.m_Targets.Length > 1) m_targetGroup.RemoveMember(m_target.transform);
-        if (m_targetCamera) m_targetCamera.Priority = -1;
+        if (m_targetCamera)
+        {
+            m_targetCamera.Follow = null;
+            m_targetCamera.Priority = -1;
+        }
         /*フリールックのtransformにグループカメラのそれを代入し、フリールックの設定を元に戻す*/
         if (m_fcum)
         {
-
             m_fcum.Follow = m_followTemp;
             m_fcum.LookAt = m_lookAtTemp;
         }
+        m_target = null;
 
     }
     /// <summary>

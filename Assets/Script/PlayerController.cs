@@ -83,7 +83,6 @@ public class PlayerController : MonoBehaviour
                 this.transform.LookAt(m_loc.GetTarget.transform.position);
             }
 
-            //here
             Vector3 velo = dir.normalized * m_spdTemp; // 入力した方向に移動する
             velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
             m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
@@ -111,6 +110,7 @@ public class PlayerController : MonoBehaviour
             {
                 Debug.Log(PlayerAnimation.PlayerDirState.ToString());
                 m_anim.SetBool("isLockOn", true);
+                if (IsSprint) IsSprint = false;
                 if (IsGround())
                 {
                     switch (PlayerAnimation.PlayerDirState)
@@ -125,7 +125,6 @@ public class PlayerController : MonoBehaviour
                             m_anim.SetInteger("LockOnMotion", 3);
                             break;
                         case PlayerMovingDirection.Left:
-
                             m_anim.SetInteger("LockOnMotion", 4);
                             break;
                         case PlayerMovingDirection.Back:
@@ -135,7 +134,6 @@ public class PlayerController : MonoBehaviour
                             break;
                     }
                 }
-
             }
         }
     }
