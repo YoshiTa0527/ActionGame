@@ -12,11 +12,13 @@ public class GrapplingManager : MonoBehaviour
     [SerializeField] float m_disToDecelerateTarget = 2f;
     /// <summary>ターゲットを減速させるときにかける数</summary>
     [SerializeField] float m_decelerateSpeed = 0.5f;
+    [SerializeField] float m_pullTime = 0.2f;
 
     Rigidbody m_targetRb;
     ConfigurableJoint m_joint;
     LockOnController m_lockOn;
     LineRenderer m_lineRend;
+    float m_timer;
 
     public static bool IsHooked { get; set; }
 
@@ -50,10 +52,11 @@ public class GrapplingManager : MonoBehaviour
         if (IsHooked)
         {
             DrawLine(this.transform.position, m_lockOn.GetTarget.transform.position);
-            if (Input.GetButtonDown("Fire2"))
+            m_timer += Time.deltaTime;
+            if (m_timer > m_pullTime)
             {
+                m_timer = 0;
                 PullTarget(m_joint, m_lockOn.GetTarget);
-                Debug.Log($"pushed Fire2::{m_joint.linearLimit.limit}");
             }
 
             if (Vector3.Distance(this.transform.position, m_lockOn.GetTarget.transform.position) <= m_disToDecelerateTarget)
@@ -61,15 +64,12 @@ public class GrapplingManager : MonoBehaviour
                 m_targetRb.velocity = Vector3.zero;
                 IsHooked = false;
             }
-
         }
         else
         {
             LoseHook(m_joint);
             HideLine();
         }
-
-
     }
 
     void Hook(ConfigurableJoint joint, GameObject target)

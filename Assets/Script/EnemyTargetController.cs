@@ -11,6 +11,7 @@ using UnityEngine;
 public class EnemyTargetController : MonoBehaviour
 {
     bool m_isTargetable = false;
+    [SerializeField] public UnityEngine.UI.Text m_orderText = null;
 
     /// <summary>
     /// オブジェクトが画面内にあるかどうかを返す
@@ -31,4 +32,5 @@ public class EnemyTargetController : MonoBehaviour
         m_isTargetable = false;
         Debug.Log("OnBecameInvisible()");
     }
+
 }

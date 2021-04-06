@@ -10,11 +10,13 @@ using UnityEngine.UI;
 public class PlayerController : MonoBehaviour
 {
     /// <summary>プレイヤーの動きに関するフィールド</summary>
-    [SerializeField] float m_movingSpeed = 5f;
+    [SerializeField] float m_defaultMovingSpeed = 5f;
+    [SerializeField] float m_sprintSpeed = 8f;
+    [SerializeField] float m_lockOnMoveSpeed = 3f;
     [SerializeField] float m_turnSpeed = 5f;
     [SerializeField] float m_jumpPower = 5f;
-    [SerializeField] float m_lockOnMovingSpeed = 4f;
     float m_spdTemp;
+    static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
     [SerializeField] float m_rayMaxDistance = 1f;
@@ -35,7 +37,7 @@ public class PlayerController : MonoBehaviour
         m_loc = FindObjectOfType<LockOnController>();
         m_colider = GetComponent<CapsuleCollider>();
         m_anim = GetComponent<Animator>();
-        m_spdTemp = m_movingSpeed;
+        m_spdTemp = m_defaultMovingSpeed;
     }
 
     private void Update()
@@ -46,6 +48,21 @@ public class PlayerController : MonoBehaviour
         //// カメラを基準に入力が上下=奥/手前, 左右=左右にキャラクターを向ける
         dir = Camera.main.transform.TransformDirection(dir);    // メインカメラを基準に入力方向のベクトルを変換する
         dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+
+        if (Input.GetButtonDown("Sprint"))
+        {
+            Debug.Log("SprintButtonPushed");
+            if (!IsSprint) IsSprint = true;
+            else IsSprint = false;
+        }
+
+        /*ロックオン中、スプリント中で速度を変える*/
+        if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
+        else
+        {
+            if (IsSprint) m_spdTemp = m_sprintSpeed;
+            else m_spdTemp = m_defaultMovingSpeed;
+        }
 
         if (IsGround())
         {
@@ -67,7 +84,7 @@ public class PlayerController : MonoBehaviour
             }
 
             //here
-            Vector3 velo = dir.normalized * m_movingSpeed; // 入力した方向に移動する
+            Vector3 velo = dir.normalized * m_spdTemp; // 入力した方向に移動する
             velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
             m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
 
@@ -86,7 +103,6 @@ public class PlayerController : MonoBehaviour
         {
             if (!LockOnController.IsLock)
             {
-                m_movingSpeed = m_spdTemp;
                 m_anim.SetBool("isLockOn", false);
                 m_anim.SetFloat("spd", m_rb.velocity.magnitude);
                 m_anim.SetInteger("LockOnMotion", 0);
@@ -103,19 +119,16 @@ public class PlayerController : MonoBehaviour
                             m_anim.SetInteger("LockOnMotion", 0);
                             break;
                         case PlayerMovingDirection.Forward:
-                            m_movingSpeed = m_lockOnMovingSpeed;
                             m_anim.SetInteger("LockOnMotion", 1);
                             break;
                         case PlayerMovingDirection.Right:
-                            m_movingSpeed = m_lockOnMovingSpeed;
                             m_anim.SetInteger("LockOnMotion", 3);
                             break;
                         case PlayerMovingDirection.Left:
-                            m_movingSpeed = m_lockOnMovingSpeed;
+
                             m_anim.SetInteger("LockOnMotion", 4);
                             break;
                         case PlayerMovingDirection.Back:
-                            m_movingSpeed = m_lockOnMovingSpeed;
                             m_anim.SetInteger("LockOnMotion", 2);
                             break;
                         default:
@@ -126,9 +139,6 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-
-
-
     RaycastHit m_hit;
     bool IsGround()
     {

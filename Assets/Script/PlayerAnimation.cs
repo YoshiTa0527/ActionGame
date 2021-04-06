@@ -16,15 +16,20 @@ public class PlayerAnimation : MonoBehaviour
         float v = Input.GetAxisRaw("Vertical");
         Debug.Log("test" + PlayerDirState.ToString());
         if (h == 0 && v == 0) { PlayerDirState = PlayerMovingDirection.Neutral; }
-        else if (h == 0)
+
+        if (PlayerController.IsSprint) { PlayerDirState = PlayerMovingDirection.Sprint; }
+        else
         {
-            if (v > 0 && v <= 1) { PlayerDirState = PlayerMovingDirection.Forward; }
-            else if (v < 0 && v >= -1) { PlayerDirState = PlayerMovingDirection.Back; }
-        }
-        else if (v == 0 || v != 0)
-        {
-            if (h > 0 && h <= 1) { PlayerDirState = PlayerMovingDirection.Right; }
-            else if (h < 0 && h >= -1) { PlayerDirState = PlayerMovingDirection.Left; }
+            if (h == 0)
+            {
+                if (v > 0 && v <= 1) { PlayerDirState = PlayerMovingDirection.Forward; }
+                else if (v < 0 && v >= -1) { PlayerDirState = PlayerMovingDirection.Back; }
+            }
+            else if (v == 0 || v != 0)
+            {
+                if (h > 0 && h <= 1) { PlayerDirState = PlayerMovingDirection.Right; }
+                else if (h < 0 && h >= -1) { PlayerDirState = PlayerMovingDirection.Left; }
+            }
         }
 
     }
@@ -34,11 +39,10 @@ public enum PlayerMovingDirection
 {
     Neutral,
     Forward,
-    RightForward,
-    LeftForward,
     Right,
     Left,
     Back,
-    RightBack,
-    LeftBack,
+    Sprint,
 }
+
+

@@ -1,14 +1,12 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-using System.Linq;
 
-
-public class Test : MonoBehaviour
+public class DpadController : MonoBehaviour
 {
-    static bool dpadRight;
-    static bool dpadLeft;
-    static float m_currentDpadValue;
+    public static bool m_dpadRight;
+    public static bool m_dpadLeft;
+    private static float m_currentDpadValue;
 
     private void Start()
     {
@@ -24,32 +22,30 @@ public class Test : MonoBehaviour
         {
             if (dpadValue > 0)
             {
-                dpadRight = true;
+                m_dpadRight = true;
             }
             else if (dpadValue < 0)
             {
-                dpadLeft = true;
+                m_dpadLeft = true;
             }
         }
         else
         {
-            dpadRight = false;
-            dpadLeft = false;
+            m_dpadRight = false;
+            m_dpadLeft = false;
         }
 
         m_currentDpadValue = dpadValue;
 
-        if (dpadLeft)
+        if (m_dpadLeft)
         {
             Debug.Log("test::左が押された");
             // dpadLeft = false;
         }
-        else if (dpadRight)
+        else if (m_dpadRight)
         {
             Debug.Log("test::右が押された");
             //dpadRight = false;
         }
     }
-
-
 }

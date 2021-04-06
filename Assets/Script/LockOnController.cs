@@ -35,6 +35,7 @@ public class LockOnController : MonoBehaviour
     int m_targetIndex = 0;
     float m_timer = 0;
     CinemachineTargetGroup m_targetGroup;
+    [SerializeField] bool m_isDebugmode = false;
 
     private void Start()
     {
@@ -52,7 +53,6 @@ public class LockOnController : MonoBehaviour
             m_followTemp = m_fcum.Follow;
             m_lookAtTemp = m_fcum.LookAt;
         }
-
     }
 
     private void Update()
@@ -62,6 +62,7 @@ public class LockOnController : MonoBehaviour
         //現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
         if (m_target)
         {
+            Debug.Log("LockOnContrtoller::targetName=" + m_target.gameObject.name);
             if (!m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
             {
                 UnLockEnemy();
@@ -72,7 +73,6 @@ public class LockOnController : MonoBehaviour
 
         ///*とりあえず敵を全て取得する*/
         EnemyTargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<EnemyTargetController>();
-
         /*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
         foreach (var t in targets)
         {
@@ -83,6 +83,11 @@ public class LockOnController : MonoBehaviour
             }
         }
 
+        if (m_isDebugmode)
+        {
+            DetectNearestTarget();
+        }
+
         if (IsLock)
         {
             if (m_fcum) m_fcum.transform.position = m_targetCamera.transform.position;
@@ -91,24 +96,15 @@ public class LockOnController : MonoBehaviour
                 m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
             }
 
-
             if (m_orderedTargets.Count >= 0)
             {
                 /*複数の敵がロックオン可能な場合十字キー左右で敵の選択*/
-                float horizon = Input.GetAxis("D-Pad H");
-                if (horizon > 0)
+                if (DpadController.m_dpadRight)
                 {
-                    /*感度が良すぎるので少し待ってからターゲットを切り替えたい*/
-                    m_timer += Time.deltaTime;
-                    if (m_timer > 0.1f)
-                    {
-                        m_timer = 0;
-
-                        Debug.Log($"Input::十字キー左右が押された。{m_targetIndex.ToString()}");
-                        m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
-                    }
-                    m_target = m_orderedTargets[m_targetIndex];
+                    m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
                 }
+                m_target = m_orderedTargets[m_targetIndex];
+
             }
         }
         else { UnLockEnemy(); }
@@ -120,8 +116,6 @@ public class LockOnController : MonoBehaviour
             Debug.Log("スティック押し込み");
             if (!IsLock)
             {
-                DetectNearestTarget();
-                m_target = m_orderedTargets[m_targetIndex];
                 LockOnEnemy();
             }
             else
@@ -133,10 +127,12 @@ public class LockOnController : MonoBehaviour
     /// <summary>
     /// 敵をロックオンする
     /// </summary>
-    void LockOnEnemy()
+    public void LockOnEnemy()
     {
         Debug.Log("Lock on Enemy");
         IsLock = true;
+        DetectNearestTarget();
+        m_target = m_orderedTargets[m_targetIndex];
         if (m_target) m_player.transform.LookAt(m_target.transform);
         if (m_targetGroup) m_targetGroup.AddMember(m_target.transform, m_weight, m_radius);
         if (m_targetCamera) m_targetCamera.Priority = m_priority;
@@ -150,7 +146,7 @@ public class LockOnController : MonoBehaviour
     /// <summary>
     /// 敵のロックオンを外す
     /// </summary>
-    void UnLockEnemy()
+    public void UnLockEnemy()
     {
         Debug.Log("UnLock Enemy");
         IsLock = false;
@@ -197,6 +193,9 @@ public class LockOnController : MonoBehaviour
     {
         Debug.Log("リストの中の敵を並び替える");
         m_orderedTargets = m_targets.OrderBy(t => Vector3.Distance(m_player.transform.position, t.transform.position)).ToList();
+        if (m_isDebugmode)
+            m_orderedTargets.ForEach(t => t.gameObject.transform.Find("EnemyCanvas").
+                                            gameObject.transform.Find("Text").GetComponent<Text>().text = m_orderedTargets.IndexOf(t).ToString());
     }
 
 }
