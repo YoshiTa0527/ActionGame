@@ -59,6 +59,12 @@ public class LockOnController : MonoBehaviour
     {
         if (!m_player) return;
         m_targets.Clear();
+        if (m_targetGroup.m_Targets.Length > 2)
+        {
+            Debug.Log("ターゲットが多すぎる");
+            m_targetGroup.RemoveMember(m_targetGroup.m_Targets[1].target.transform);
+            Debug.Log("ターゲットが多すぎた");
+        }
         //現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
         if (m_target)
         {
@@ -102,8 +108,8 @@ public class LockOnController : MonoBehaviour
                 if (DpadController.m_dpadRight)
                 {
                     m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
+                    LockOnEnemy(m_orderedTargets[m_targetIndex]);
                 }
-                m_target = m_orderedTargets[m_targetIndex];
 
             }
         }
@@ -116,7 +122,8 @@ public class LockOnController : MonoBehaviour
             Debug.Log("スティック押し込み");
             if (!IsLock)
             {
-                LockOnEnemy();
+                DetectNearestTarget();
+                LockOnEnemy(m_orderedTargets[m_targetIndex]);
             }
             else
             {
@@ -127,12 +134,11 @@ public class LockOnController : MonoBehaviour
     /// <summary>
     /// 敵をロックオンする
     /// </summary>
-    public void LockOnEnemy()
+    public void LockOnEnemy(EnemyTargetController target)
     {
         Debug.Log("Lock on Enemy");
         IsLock = true;
-        DetectNearestTarget();
-        m_target = m_orderedTargets[m_targetIndex];
+        m_target = target;
         if (m_target) m_player.transform.LookAt(m_target.transform);
         if (m_targetGroup) m_targetGroup.AddMember(m_target.transform, m_weight, m_radius);
         if (m_targetCamera) m_targetCamera.Priority = m_priority;
@@ -192,10 +198,11 @@ public class LockOnController : MonoBehaviour
     void DetectNearestTarget()
     {
         Debug.Log("リストの中の敵を並び替える");
-        m_orderedTargets = m_targets.OrderBy(t => Vector3.Distance(m_player.transform.position, t.transform.position)).ToList();
+
         if (m_isDebugmode)
             m_orderedTargets.ForEach(t => t.gameObject.transform.Find("EnemyCanvas").
                                             gameObject.transform.Find("Text").GetComponent<Text>().text = m_orderedTargets.IndexOf(t).ToString());
+        m_orderedTargets = m_targets.OrderBy(t => Vector3.Distance(m_player.transform.position, t.transform.position)).ToList();
     }
 
 }
