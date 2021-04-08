@@ -42,19 +42,32 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
-        float h = Input.GetAxisRaw("Horizontal");
-        float v = Input.GetAxisRaw("Vertical");
+        float h = 0f;
+        float v = 0f;
+
+        switch (PlayerState.m_PlayerStates)
+        {
+            case PlayerStates.InGame:
+                h = Input.GetAxisRaw("Horizontal");
+                v = Input.GetAxisRaw("Vertical");
+                if (Input.GetButtonDown("Sprint"))
+                {
+                    Debug.Log("SprintButtonPushed");
+                    if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
+                    else IsSprint = false;
+                }
+                break;
+            case PlayerStates.OpenUi:
+                break;
+            default:
+                break;
+        }
+
         Vector3 dir = Vector3.forward * v + Vector3.right * h;
         //// カメラを基準に入力が上下=奥/手前, 左右=左右にキャラクターを向ける
         dir = Camera.main.transform.TransformDirection(dir);    // メインカメラを基準に入力方向のベクトルを変換する
         dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
 
-        if (Input.GetButtonDown("Sprint"))
-        {
-            Debug.Log("SprintButtonPushed");
-            if (!IsSprint) IsSprint = true;
-            else IsSprint = false;
-        }
 
         /*ロックオン中、スプリント中で速度を変える*/
         if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
@@ -89,7 +102,9 @@ public class PlayerController : MonoBehaviour
 
             if (Input.GetButtonDown("Jump"))
             {
-                //m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
+
+                m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
+                if (m_anim) m_anim.SetTrigger("Jump");
                 /*とりあえずなにもしない*/
             }
         }
@@ -108,12 +123,12 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
-                Debug.Log(PlayerAnimation.PlayerDirState.ToString());
+                Debug.Log(PlayerState.m_PlayerDirState.ToString());
                 m_anim.SetBool("isLockOn", true);
                 if (IsSprint) IsSprint = false;
                 if (IsGround())
                 {
-                    switch (PlayerAnimation.PlayerDirState)
+                    switch (PlayerState.m_PlayerDirState)
                     {
                         case PlayerMovingDirection.Neutral:
                             m_anim.SetInteger("LockOnMotion", 0);

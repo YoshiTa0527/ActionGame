@@ -43,7 +43,7 @@ public class LockOnController : MonoBehaviour
         m_player = GameObject.FindGameObjectWithTag("Player");
         IsLock = false;
         /*ターゲットカメラに関する処理*/
-        m_targetCamera = GameObject.FindGameObjectWithTag("TargetCamera").gameObject.GetComponent<CinemachineVirtualCamera>();
+        m_targetCamera = GameObject.FindGameObjectWithTag("TargetCamera")?.gameObject.GetComponent<CinemachineVirtualCamera>();
         m_targetGroup = FindObjectOfType<CinemachineTargetGroup>();
         if (m_targetCamera)
         {
@@ -54,6 +54,7 @@ public class LockOnController : MonoBehaviour
         m_fcum = GameObject.FindGameObjectWithTag("FreeLookCamera1").gameObject.GetComponent<CinemachineFreeLook>();
         if (m_fcum)
         {
+            Debug.Log("through");
             m_followTemp = m_fcum.Follow;
             m_lookAtTemp = m_fcum.LookAt;
         }
@@ -63,7 +64,7 @@ public class LockOnController : MonoBehaviour
     {
         if (!m_player) return;
         m_targets.Clear();
-        if (m_targetGroup.m_Targets.Length > 2)
+        if (m_targetGroup && m_targetGroup.m_Targets.Length > 2)
         {
             Debug.Log("ターゲットが多すぎる");
             m_targetGroup.RemoveMember(m_targetGroup.m_Targets[1].target.transform);
@@ -100,7 +101,7 @@ public class LockOnController : MonoBehaviour
 
         if (IsLock)
         {
-            if (m_fcum) m_fcum.transform.position = m_targetCamera.transform.position;
+            if (m_fcum && m_targetCamera) m_fcum.transform.position = m_targetCamera.transform.position;
             if (m_lockOnMarkerImage && m_target)
             {
                 m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
@@ -174,7 +175,7 @@ public class LockOnController : MonoBehaviour
         Debug.Log("UnLock Enemy");
         IsLock = false;
         HideMarker();
-        if (m_targetGroup.m_Targets.Length > 1) m_targetGroup.RemoveMember(m_target.transform);
+        if (m_targetGroup && m_targetGroup.m_Targets.Length > 1) m_targetGroup.RemoveMember(m_target.transform);
         if (m_targetCamera)
         {
             m_targetCamera.Follow = null;
