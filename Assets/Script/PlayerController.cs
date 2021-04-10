@@ -10,6 +10,9 @@ using UnityEngine.UI;
 public class PlayerController : MonoBehaviour
 {
     /// <summary>プレイヤーの動きに関するフィールド</summary>
+    float m_horizontal;
+    float m_virtical;
+    Vector3 m_dir;
     [SerializeField] float m_defaultMovingSpeed = 5f;
     [SerializeField] float m_sprintSpeed = 8f;
     [SerializeField] float m_lockOnMoveSpeed = 3f;
@@ -25,9 +28,6 @@ public class PlayerController : MonoBehaviour
     [SerializeField] CapsuleCollider m_colider;
     /// <summary>ロックオンに関するフィールド</summary>
     LockOnController m_loc;
-
-
-
     Rigidbody m_rb;
     Animator m_anim;
 
@@ -40,16 +40,19 @@ public class PlayerController : MonoBehaviour
         m_spdTemp = m_defaultMovingSpeed;
     }
 
+    private void FixedUpdate()
+    {
+        Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
+        velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
+        m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
+    }
     private void Update()
     {
-        float h = 0f;
-        float v = 0f;
-
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
-                h = Input.GetAxisRaw("Horizontal");
-                v = Input.GetAxisRaw("Vertical");
+                m_horizontal = Input.GetAxisRaw("Horizontal");
+                m_virtical = Input.GetAxisRaw("Vertical");
                 if (Input.GetButtonDown("Sprint"))
                 {
                     Debug.Log("SprintButtonPushed");
@@ -63,11 +66,10 @@ public class PlayerController : MonoBehaviour
                 break;
         }
 
-        Vector3 dir = Vector3.forward * v + Vector3.right * h;
+        m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
         //// カメラを基準に入力が上下=奥/手前, 左右=左右にキャラクターを向ける
-        dir = Camera.main.transform.TransformDirection(dir);    // メインカメラを基準に入力方向のベクトルを変換する
-        dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-
+        m_dir = Camera.main.transform.TransformDirection(m_dir);    // メインカメラを基準に入力方向のベクトルを変換する
+        m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
 
         /*ロックオン中、スプリント中で速度を変える*/
         if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
@@ -80,37 +82,31 @@ public class PlayerController : MonoBehaviour
         if (IsGround())
         {
             Debug.Log($"接地している{m_hit.collider.name}");
-            if (dir == Vector3.zero)
-            {
-                m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
-            }
+            if (m_anim) m_anim.SetBool("isFall", false);
+
+            if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
             else if (!LockOnController.IsLock)
             {
                 /*ロックオン状態でなければ普通に動く*/
-                Quaternion targetRotation = Quaternion.LookRotation(dir);
+                Quaternion targetRotation = Quaternion.LookRotation(m_dir);
                 this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
             }
             else
             {
-                /*敵を見ながら動く*/
-                this.transform.LookAt(m_loc.GetTarget.transform.position);
+                Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
+                lookAtTarget.y = this.transform.position.y;
+                this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
             }
-
-            Vector3 velo = dir.normalized * m_spdTemp; // 入力した方向に移動する
-            velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
-            m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
 
             if (Input.GetButtonDown("Jump"))
             {
-
-                m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
-                if (m_anim) m_anim.SetTrigger("Jump");
                 /*とりあえずなにもしない*/
             }
         }
         else
         {
             Debug.Log($"接地していない");
+            if (m_anim) m_anim.SetBool("isFall", true);
         }
 
         if (m_anim)

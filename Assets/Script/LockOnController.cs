@@ -13,11 +13,10 @@ public class LockOnController : MonoBehaviour
     [SerializeField] Image m_lockOnMarkerImage = null;
     [SerializeField] float m_lockOnRange = 5f;
     /// <summary>現在ターゲット可能な敵のリスト</summary>
-    List<EnemyTargetController> m_targets = new List<EnemyTargetController>();
+    List<TargetController> m_targets = new List<TargetController>();
     /// <summary>近い順に並び変えた敵のリスト</summary>
-    List<EnemyTargetController> m_orderedTargets = new List<EnemyTargetController>();
-    EnemyTargetController m_target;
-    EnemyTargetController m_currentTarget;
+    List<TargetController> m_orderedTargets = new List<TargetController>();
+    TargetController m_target;
     /// <summary>ロックオン時に使うVcam</summary>
     CinemachineVirtualCamera m_targetCamera;
     CinemachineFreeLook m_fcum;
@@ -33,7 +32,6 @@ public class LockOnController : MonoBehaviour
     public static bool IsLock { get; set; }
     GameObject m_player;
     int m_targetIndex = 0;
-    float m_timer = 0;
     CinemachineTargetGroup m_targetGroup;
     [SerializeField] bool m_isDebugmode = false;
 
@@ -64,12 +62,7 @@ public class LockOnController : MonoBehaviour
     {
         if (!m_player) return;
         m_targets.Clear();
-        if (m_targetGroup && m_targetGroup.m_Targets.Length > 2)
-        {
-            Debug.Log("ターゲットが多すぎる");
-            m_targetGroup.RemoveMember(m_targetGroup.m_Targets[1].target.transform);
-            Debug.Log("ターゲットが多すぎた");
-        }
+        if (m_targetGroup && m_targetGroup.m_Targets.Length > 2) m_targetGroup.RemoveMember(m_targetGroup.m_Targets[1].target.transform);
         //現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す
         if (m_target)
         {
@@ -82,8 +75,8 @@ public class LockOnController : MonoBehaviour
             }
         }
 
-        ///*とりあえず敵を全て取得する*/
-        EnemyTargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<EnemyTargetController>();
+        ///*とりあえずターゲットできるものを全て取得する*/
+        TargetController[] targets = m_enemyParent.transform.GetComponentsInChildren<TargetController>();
         /*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
         foreach (var t in targets)
         {
@@ -103,9 +96,7 @@ public class LockOnController : MonoBehaviour
         {
             if (m_fcum && m_targetCamera) m_fcum.transform.position = m_targetCamera.transform.position;
             if (m_lockOnMarkerImage && m_target)
-            {
                 m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
-            }
 
             if (m_orderedTargets.Count >= 0)
             {
@@ -120,7 +111,7 @@ public class LockOnController : MonoBehaviour
         }
         else
         {
-            UnLockEnemy();
+            UnLockEnemy();//here
             if (m_targetCamera) m_targetCamera.transform.position = m_fcum.transform.position;
         }
 
@@ -143,13 +134,18 @@ public class LockOnController : MonoBehaviour
     /// <summary>
     /// 敵をロックオンする
     /// </summary>
-    public void LockOnEnemy(EnemyTargetController target)
+    public void LockOnEnemy(TargetController target)
     {
         Debug.Log("Lock on Enemy");
         if (m_target == target)
             return;
         m_target = target;
-        if (m_target) m_player.transform.LookAt(m_target.transform);
+        if (m_target)
+        {
+            Vector3 lookAtTarget = target.transform.position;
+            lookAtTarget.y = m_player.transform.position.y;
+            m_player.transform.LookAt(lookAtTarget);
+        }
         if (m_targetGroup) m_targetGroup.AddMember(m_target.transform, m_weight, m_radius);
         if (!IsLock)
         {

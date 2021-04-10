@@ -8,7 +8,7 @@ using UnityEngine;
 ///　OnBecameVislble/OnBecameInvisible は「シーンビューのカメラ」も影響することに注意すること。
 /// </summary>
 [RequireComponent(typeof(Rigidbody))]
-public class EnemyTargetController : MonoBehaviour
+public class TargetController : MonoBehaviour
 {
     bool m_isTargetable = false;
     [SerializeField] public UnityEngine.UI.Text m_orderText = null;

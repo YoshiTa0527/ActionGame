@@ -6,6 +6,8 @@ public class PlayerState : MonoBehaviour
 {
     public static PlayerMovingDirection m_PlayerDirState { get; set; }
     public static PlayerStates m_PlayerStates { get; set; }
+    public static PlayerEquip m_PlayerEquip { get; set; }
+
     public static void ChangePlayerDirState(PlayerMovingDirection state)
     {
         m_PlayerDirState = state;
@@ -14,10 +16,15 @@ public class PlayerState : MonoBehaviour
     {
         m_PlayerStates = state;
     }
+    public static void ChangePlayerEquip(PlayerEquip state)
+    {
+        m_PlayerEquip = state;
+    }
 
     private void Start()
     {
         ChangePlayerStates(PlayerStates.InGame);
+        ChangePlayerEquip(PlayerEquip.Grapplle);
     }
     private void Update()
     {
@@ -44,6 +51,10 @@ public class PlayerState : MonoBehaviour
     }
 }
 
+public enum PlayerEquip
+{
+    Grapplle,
+}
 public enum PlayerStates
 {
     InGame,
