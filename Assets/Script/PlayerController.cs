@@ -18,6 +18,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_lockOnMoveSpeed = 3f;
     [SerializeField] float m_turnSpeed = 5f;
     [SerializeField] float m_jumpPower = 5f;
+    [SerializeField] float m_limitSpeed = 20f;
+    [SerializeField] float m_decelerateSpeed = 1.1f;
     float m_spdTemp;
     static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
@@ -42,12 +44,18 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
+
         Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
         velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
         m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
     }
     private void Update()
     {
+        if (m_rb.velocity.magnitude > m_limitSpeed)
+        {
+            Debug.Log("はやすぎ");
+            m_rb.velocity = new Vector3(m_rb.velocity.x / m_decelerateSpeed, m_rb.velocity.y / m_decelerateSpeed, m_rb.velocity.z / m_decelerateSpeed);
+        }
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:

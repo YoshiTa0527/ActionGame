@@ -6,50 +6,23 @@ using System.Linq;
 
 public class Test : MonoBehaviour
 {
-    static bool dpadRight;
-    static bool dpadLeft;
-    static float m_currentDpadValue;
-
-    private void Start()
-    {
-        Debug.Log("TestClassActive");
-        m_currentDpadValue = 0f;
-    }
+    [SerializeField] GameObject m_a;
+    [SerializeField] GameObject m_b;
     private void Update()
     {
-        //押されたときに、数値が前と一緒だったら押せなくしたい
-        float dpadValue = Input.GetAxisRaw("D-Pad H");
-
-        if (dpadValue != 0 && m_currentDpadValue == 0f)
+        if (Mathf.Approximately(m_a.transform.position.y, m_b.transform.position.y))
         {
-            if (dpadValue > 0)
-            {
-                dpadRight = true;
-            }
-            else if (dpadValue < 0)
-            {
-                dpadLeft = true;
-            }
+            Debug.Log($"aの高さ：{m_a.transform.position.y}::ｂの高さ:{m_b.transform.position.y}");
         }
-        else
-        {
-            dpadRight = false;
-            dpadLeft = false;
-        }
-
-        m_currentDpadValue = dpadValue;
-
-        if (dpadLeft)
-        {
-            Debug.Log("test::左が押された");
-            // dpadLeft = false;
-        }
-        else if (dpadRight)
-        {
-            Debug.Log("test::右が押された");
-            //dpadRight = false;
-        }
+        float disAbs = Mathf.Abs(m_a.transform.position.y - m_b.transform.position.y);
+        if (CalcValue(disAbs, 0.5f))
+            Debug.Log($"範囲内");
+        else Debug.Log("範囲外");
     }
 
-
+    bool CalcValue(float x, float threshold)
+    {
+        if (-1 * threshold < x && x < threshold) return true;
+        else return false;
+    }
 }

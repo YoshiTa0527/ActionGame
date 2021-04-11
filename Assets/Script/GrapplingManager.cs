@@ -60,35 +60,54 @@ public class GrapplingManager : MonoBehaviour
         if (IsHooked)
         {
             DrawLine(m_sourcePos.position, m_lockOn.GetTarget.transform.position);
+            if (Vector3.Distance(this.transform.position, m_lockOn.GetTarget.transform.position) <= m_disToDecelerateTarget)
+            {
+                Debug.Log("Grapple::近づいた");
+                if (m_lockOn.GetTarget.tag == "Enemy")
+                {
+                    m_targetRb = m_lockOn.GetTarget.GetComponent<Rigidbody>();
+                    m_targetRb.velocity = Vector3.zero;
+                    LoseHook(m_joint);
+                    IsHooked = false;
+                }
+                else
+                {
+                    float yAbs = Mathf.Abs(m_lockOn.GetTarget.transform.position.y - this.transform.position.y);
+                    Debug.Log("Grapple::近づいた" + yAbs);
+                    if (CalcValue(yAbs, 1f) && this.transform.position.y > m_lockOn.GetTarget.transform.position.y)
+                    {
+                        Debug.Log("高さほぼ一緒");
+                        m_playerRb = this.gameObject.GetComponent<Rigidbody>();
+                        m_playerRb.velocity = Vector3.zero;
+                        m_playerRb.AddForce(Vector3.up * 5f, ForceMode.Impulse);
+                        LoseHook(m_joint);
+                        IsHooked = false;
+                    }
+
+                    //m_playerRb.AddForce(Vector3.up * 10f, ForceMode.Impulse);
+                    Debug.Log("Pull::Pushed Player");
+                }
+            }
             m_timer += Time.deltaTime;
             if (m_timer > m_pullTime)
             {
                 m_timer = 0;
                 PullTarget(m_joint, m_lockOn.GetTarget);
             }
-            //StartCoroutine(PullTargetCo(m_joint, m_lockOn.GetTarget, m_pullTime));
+        }
 
-            if (Vector3.Distance(this.transform.position, m_lockOn.GetTarget.transform.position) <= m_disToDecelerateTarget)
-            {
-                if (m_lockOn.GetTarget.tag == "Enemy")
-                {
-                    m_targetRb = m_lockOn.GetTarget.GetComponent<Rigidbody>();
-                    m_targetRb.velocity = Vector3.zero;
-                }
-                else
-                {
-                    m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-                    m_playerRb.AddForce(Vector3.up * 10f, ForceMode.Impulse);
-                    Debug.Log("Pull::Pushed Player");
-                }
-                IsHooked = false;
-            }
-        }
-        else
-        {
-            LoseHook(m_joint);
-            HideLine();
-        }
+    }
+
+    /// <summary>
+    /// 指定された値xが指定された値thresholdの範囲内にある場合trueを返す
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="threshold"></param>
+    /// <returns></returns>
+    bool CalcValue(float x, float threshold)
+    {
+        if (-1 * threshold < x && x < threshold) return true;
+        else return false;
     }
 
     void Hook(ConfigurableJoint joint, GameObject target)
@@ -97,17 +116,10 @@ public class GrapplingManager : MonoBehaviour
         if (m_targetRb)
         {
             joint.connectedBody = m_targetRb;
-
             var cj = joint.linearLimit;
             m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-            if (target.tag == "Enemy")
-            {
-                m_playerRb.constraints = RigidbodyConstraints.FreezeAll;
-            }
-            else
-            {
-                joint.yMotion = ConfigurableJointMotion.Locked;
-            }
+            if (target.tag == "Enemy") EnableFreezePos(this.gameObject);
+
             cj.limit = Vector3.Distance(this.transform.position, target.transform.position);
             joint.linearLimit = cj;
 
@@ -124,9 +136,9 @@ public class GrapplingManager : MonoBehaviour
 
     void LoseHook(ConfigurableJoint joint)
     {
-        m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-        m_playerRb.constraints = RigidbodyConstraints.None;
-        m_playerRb.constraints = RigidbodyConstraints.FreezeRotation;
+        Debug.Log("GrapplingManager::LoseHook()");
+        HideLine();
+        DisableFreezePos(this.gameObject);
 
         joint.connectedBody = null;
         joint.xMotion = ConfigurableJointMotion.Free;
@@ -137,25 +149,6 @@ public class GrapplingManager : MonoBehaviour
     void PullTarget(ConfigurableJoint joint, GameObject target)
     {
         var cj = joint.linearLimit;
-
-        cj.limit = m_pullLimit;
-        joint.linearLimit = cj;
-
-        //joint.xMotion = ConfigurableJointMotion.Locked;
-        //joint.yMotion = ConfigurableJointMotion.Locked;
-        //joint.zMotion = ConfigurableJointMotion.Locked;
-
-    }
-
-    IEnumerator PullTargetCo(ConfigurableJoint joint, GameObject target, float time)
-    {
-        var cj = joint.linearLimit;
-        yield return new WaitForSeconds(time);
-        if (target.tag == "Enemy")
-        {
-            m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-            m_playerRb.constraints = RigidbodyConstraints.FreezeAll;
-        }
 
         cj.limit = m_pullLimit;
         joint.linearLimit = cj;
@@ -170,5 +163,18 @@ public class GrapplingManager : MonoBehaviour
     void HideLine()
     {
         DrawLine(Vector3.zero, Vector3.zero);
+    }
+
+    void EnableFreezePos(GameObject target)
+    {
+        Rigidbody rb = target.GetComponent<Rigidbody>();
+        rb.constraints = RigidbodyConstraints.FreezeAll;
+    }
+
+    void DisableFreezePos(GameObject target)
+    {
+        Rigidbody rb = target.GetComponent<Rigidbody>();
+        rb.constraints = RigidbodyConstraints.None;
+        rb.constraints = RigidbodyConstraints.FreezeRotation;
     }
 }
