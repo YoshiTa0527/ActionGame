@@ -10,7 +10,7 @@ public class DpadController : MonoBehaviour
 
     private void Start()
     {
-        Debug.Log("TestClassActive");
+        Debug.Log("DpadClassActive");
         m_currentDpadValue = 0f;
     }
     private void Update()

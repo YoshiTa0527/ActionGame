@@ -2,11 +2,17 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+/// <summary>
+/// プレイヤーの状態に応じてステートを変更する。プレイヤーにアタッチすること。
+/// </summary>
 public class PlayerState : MonoBehaviour
 {
     public static PlayerMovingDirection m_PlayerDirState { get; set; }
     public static PlayerStates m_PlayerStates { get; set; }
     public static PlayerEquip m_PlayerEquip { get; set; }
+
+    public static PlayerJumpAnimation m_PlayerJumpState { get; set; }
+    [SerializeField] float m_rayMaxDis = 1f;
 
     public static void ChangePlayerDirState(PlayerMovingDirection state)
     {
@@ -30,9 +36,8 @@ public class PlayerState : MonoBehaviour
     {
         float h = Input.GetAxisRaw("Horizontal");
         float v = Input.GetAxisRaw("Vertical");
-        Debug.Log("test" + m_PlayerDirState.ToString());
+        /*プレイヤーの方向に合わせてステートを切り替える*/
         if (h == 0 && v == 0) { m_PlayerDirState = PlayerMovingDirection.Neutral; }
-
         if (PlayerController.IsSprint) { m_PlayerDirState = PlayerMovingDirection.Sprint; }
         else
         {
@@ -47,6 +52,11 @@ public class PlayerState : MonoBehaviour
                 else if (h < 0 && h >= -1) { m_PlayerDirState = PlayerMovingDirection.Left; }
             }
         }
+
+        /*プレイヤーが空中にいるとき、地面との距離によってステートを切り替える*/
+        RaycastHit hit;
+        Physics.Raycast(this.transform.position, Vector3.down, out hit, Mathf.Infinity);
+        Debug.DrawRay(this.transform.position, Vector3.down * hit.distance, Color.green);
 
     }
 }
@@ -70,4 +80,10 @@ public enum PlayerMovingDirection
     Sprint,
 }
 
+public enum PlayerJumpAnimation
+{
+    Start,
+    InTheAir,
+    End,
+}
 

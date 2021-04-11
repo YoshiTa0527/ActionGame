@@ -6,18 +6,20 @@ using System.Linq;
 
 public class Test : MonoBehaviour
 {
-    [SerializeField] GameObject m_a;
+    [SerializeField] bool m_a;
     [SerializeField] GameObject m_b;
+    [SerializeField] float m_rayMaxDis = 1f;
+    [SerializeField] LayerMask m_mask;
     private void Update()
     {
-        if (Mathf.Approximately(m_a.transform.position.y, m_b.transform.position.y))
+        if (m_a)
         {
-            Debug.Log($"aの高さ：{m_a.transform.position.y}::ｂの高さ:{m_b.transform.position.y}");
+            RaycastHit m_hit;
+            Debug.DrawRay(this.transform.position, Vector3.down * m_rayMaxDis, Color.blue);
+            if (Physics.Raycast(this.transform.position, Vector3.down, out m_hit, m_rayMaxDis, m_mask)) Debug.Log("test::true::" + m_hit.collider.name);
+            else { Debug.Log("test::false"); }
         }
-        float disAbs = Mathf.Abs(m_a.transform.position.y - m_b.transform.position.y);
-        if (CalcValue(disAbs, 0.5f))
-            Debug.Log($"範囲内");
-        else Debug.Log("範囲外");
+
     }
 
     bool CalcValue(float x, float threshold)

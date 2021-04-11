@@ -20,7 +20,10 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_jumpPower = 5f;
     [SerializeField] float m_limitSpeed = 20f;
     [SerializeField] float m_decelerateSpeed = 1.1f;
+    [SerializeField] float m_landingMotionDis = 1f;
+    float m_highestPos;
     float m_spdTemp;
+    float m_turnSpdTemp;
     static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
@@ -40,6 +43,7 @@ public class PlayerController : MonoBehaviour
         m_colider = GetComponent<CapsuleCollider>();
         m_anim = GetComponent<Animator>();
         m_spdTemp = m_defaultMovingSpeed;
+        m_turnSpdTemp = m_turnSpeed;
     }
 
     private void FixedUpdate()
@@ -59,13 +63,16 @@ public class PlayerController : MonoBehaviour
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
-                m_horizontal = Input.GetAxisRaw("Horizontal");
-                m_virtical = Input.GetAxisRaw("Vertical");
-                if (Input.GetButtonDown("Sprint"))
+                if (IsGround())
                 {
-                    Debug.Log("SprintButtonPushed");
-                    if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
-                    else IsSprint = false;
+                    m_horizontal = Input.GetAxisRaw("Horizontal");
+                    m_virtical = Input.GetAxisRaw("Vertical");
+                    if (Input.GetButtonDown("Sprint"))
+                    {
+                        Debug.Log("SprintButtonPushed");
+                        if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
+                        else IsSprint = false;
+                    }
                 }
                 break;
             case PlayerStates.OpenUi:
@@ -90,7 +97,11 @@ public class PlayerController : MonoBehaviour
         if (IsGround())
         {
             Debug.Log($"接地している{m_hit.collider.name}");
-            if (m_anim) m_anim.SetBool("isFall", false);
+            if (m_anim)
+            {
+                if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
+                if (m_anim.GetBool("IsLanding")) m_anim.SetBool("IsLanding", false);
+            }
 
             if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
             else if (!LockOnController.IsLock)
@@ -108,13 +119,29 @@ public class PlayerController : MonoBehaviour
 
             if (Input.GetButtonDown("Jump"))
             {
-                /*とりあえずなにもしない*/
+                Jump();
             }
         }
         else
         {
             Debug.Log($"接地していない");
-            if (m_anim) m_anim.SetBool("isFall", true);
+            if (m_anim)
+            {
+                Ray ray = new Ray(this.transform.position, Vector3.down);
+                Debug.DrawRay(this.transform.position, Vector3.down * m_landingMotionDis, Color.green);
+                /*落下中は落ちるモーションを取る*/
+                if (m_rb.velocity.y < 0)
+                {
+                    if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
+                    if (!m_anim.GetBool("IsFall")) m_anim.SetBool("IsFall", true);
+
+                    if (Physics.Raycast(this.transform.position, Vector3.down, m_landingMotionDis))
+                    {
+                        if (!m_anim.GetBool("IsLanding")) m_anim.SetBool("IsLanding", true);
+                    }
+                }
+
+            }
         }
 
         if (m_anim)
@@ -156,7 +183,25 @@ public class PlayerController : MonoBehaviour
             }
         }
     }
-    RaycastHit m_hit;
+    public void CanMove()
+    {
+        m_turnSpeed = m_turnSpdTemp;
+        m_rb.constraints = RigidbodyConstraints.None | RigidbodyConstraints.FreezeRotation;
+        Debug.Log("CanMoveCalled");
+    }
+
+    public void CanNotMove()
+    {
+        m_turnSpeed = 0;
+        m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
+        Debug.Log("CanNotMoveCalled");
+    }
+    public void Jump()
+    {
+        if (m_anim) m_anim.SetBool("Jump", true);
+        m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
+    }
+    private static RaycastHit m_hit;
     bool IsGround()
     {
         Ray ray = new Ray(this.transform.position + m_colider.center, Vector3.down);

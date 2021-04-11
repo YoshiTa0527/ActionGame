@@ -84,8 +84,6 @@ public class GrapplingManager : MonoBehaviour
                         IsHooked = false;
                     }
 
-                    //m_playerRb.AddForce(Vector3.up * 10f, ForceMode.Impulse);
-                    Debug.Log("Pull::Pushed Player");
                 }
             }
             m_timer += Time.deltaTime;
