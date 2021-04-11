@@ -50657,7 +50657,7 @@ AnimationClip:
     floatParameter: 0
     intParameter: 0
     messageOptions: 0
-  - time: 0.56666666
+  - time: 0.46666667
     functionName: CanMove
     data: 
     objectReferenceParameter: {fileID: 11500000, guid: 3898587c3e375764798bf94a38457b8d,

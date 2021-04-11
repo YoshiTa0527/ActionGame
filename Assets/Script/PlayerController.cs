@@ -20,10 +20,12 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_jumpPower = 5f;
     [SerializeField] float m_limitSpeed = 20f;
     [SerializeField] float m_decelerateSpeed = 1.1f;
-    [SerializeField] float m_landingMotionDis = 1f;
+    [SerializeField] float m_landingMotionDis = 3f;
+    [SerializeField] float m_fallMotionDis = 1f;
     float m_highestPos;
     float m_spdTemp;
     float m_turnSpdTemp;
+    bool m_canmove = true;
     static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
@@ -48,7 +50,6 @@ public class PlayerController : MonoBehaviour
 
     private void FixedUpdate()
     {
-
         Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
         velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
         m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
@@ -63,7 +64,7 @@ public class PlayerController : MonoBehaviour
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
-                if (IsGround())
+                if (IsGround() && m_canmove)
                 {
                     m_horizontal = Input.GetAxisRaw("Horizontal");
                     m_virtical = Input.GetAxisRaw("Vertical");
@@ -100,7 +101,12 @@ public class PlayerController : MonoBehaviour
             if (m_anim)
             {
                 if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
-                if (m_anim.GetBool("IsLanding")) m_anim.SetBool("IsLanding", false);
+                if (m_anim.GetBool("IsFall") || m_anim.GetBool("IsLanding"))
+                {
+                    m_horizontal = 0f;
+                    m_virtical = 0f;
+                    m_anim.SetBool("IsFall", false);
+                }
             }
 
             if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
@@ -127,20 +133,15 @@ public class PlayerController : MonoBehaviour
             Debug.Log($"接地していない");
             if (m_anim)
             {
+                if (!m_anim.GetBool("Jump")) m_anim.SetBool("Jump", true);
                 Ray ray = new Ray(this.transform.position, Vector3.down);
-                Debug.DrawRay(this.transform.position, Vector3.down * m_landingMotionDis, Color.green);
                 /*落下中は落ちるモーションを取る*/
                 if (m_rb.velocity.y < 0)
                 {
                     if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
-                    if (!m_anim.GetBool("IsFall")) m_anim.SetBool("IsFall", true);
-
-                    if (Physics.Raycast(this.transform.position, Vector3.down, m_landingMotionDis))
-                    {
-                        if (!m_anim.GetBool("IsLanding")) m_anim.SetBool("IsLanding", true);
-                    }
+                    if (!m_anim.GetBool("IsFall") && !Physics.Raycast(ray, m_fallMotionDis)) m_anim.SetBool("IsFall", true);
+                    else if (m_anim.GetBool("IsFall") && Physics.Raycast(ray, m_fallMotionDis)) m_anim.SetBool("IsLanding", true);
                 }
-
             }
         }
 
@@ -185,6 +186,7 @@ public class PlayerController : MonoBehaviour
     }
     public void CanMove()
     {
+        m_canmove = true;
         m_turnSpeed = m_turnSpdTemp;
         m_rb.constraints = RigidbodyConstraints.None | RigidbodyConstraints.FreezeRotation;
         Debug.Log("CanMoveCalled");
@@ -192,6 +194,8 @@ public class PlayerController : MonoBehaviour
 
     public void CanNotMove()
     {
+        m_canmove = false;
+        if (m_anim) m_anim.SetFloat("spd", 0f);
         m_turnSpeed = 0;
         m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
         Debug.Log("CanNotMoveCalled");

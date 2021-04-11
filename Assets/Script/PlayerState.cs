@@ -54,9 +54,7 @@ public class PlayerState : MonoBehaviour
         }
 
         /*プレイヤーが空中にいるとき、地面との距離によってステートを切り替える*/
-        RaycastHit hit;
-        Physics.Raycast(this.transform.position, Vector3.down, out hit, Mathf.Infinity);
-        Debug.DrawRay(this.transform.position, Vector3.down * hit.distance, Color.green);
+      
 
     }
 }
