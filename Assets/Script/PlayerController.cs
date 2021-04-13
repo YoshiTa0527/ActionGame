@@ -22,6 +22,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_decelerateSpeed = 1.1f;
     [SerializeField] float m_landingMotionDis = 3f;
     [SerializeField] float m_fallMotionDis = 1f;
+    [SerializeField] float m_movingPowerInTheAir = 2f;
     float m_highestPos;
     float m_spdTemp;
     float m_turnSpdTemp;
@@ -61,10 +62,11 @@ public class PlayerController : MonoBehaviour
             Debug.Log("はやすぎ");
             m_rb.velocity = new Vector3(m_rb.velocity.x / m_decelerateSpeed, m_rb.velocity.y / m_decelerateSpeed, m_rb.velocity.z / m_decelerateSpeed);
         }
+
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
-                if (IsGround() && m_canmove)
+                if (m_canmove)//here
                 {
                     m_horizontal = Input.GetAxisRaw("Horizontal");
                     m_virtical = Input.GetAxisRaw("Vertical");
@@ -82,10 +84,34 @@ public class PlayerController : MonoBehaviour
                 break;
         }
 
+
         m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
-        //// カメラを基準に入力が上下=奥/手前, 左右=左右にキャラクターを向ける
-        m_dir = Camera.main.transform.TransformDirection(m_dir);    // メインカメラを基準に入力方向のベクトルを変換する
-        m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+        if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
+        else if (!LockOnController.IsLock)
+        {
+            /*ロックオン状態でなければ普通に動く*/
+            if (IsGround())
+            {
+                m_dir = Camera.main.transform.TransformDirection(m_dir);    // メインカメラを基準に入力方向のベクトルを変換する
+                m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+            }
+            else
+            {
+                m_dir = this.transform.TransformDirection(m_dir);
+                m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+            }
+            Quaternion targetRotation = Quaternion.LookRotation(m_dir);
+            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
+        }
+        else
+        {
+            m_dir = this.transform.TransformDirection(m_dir);
+            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+
+            Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
+            lookAtTarget.y = this.transform.position.y;
+            this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
+        }
 
         /*ロックオン中、スプリント中で速度を変える*/
         if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
@@ -98,29 +124,16 @@ public class PlayerController : MonoBehaviour
         if (IsGround())
         {
             Debug.Log($"接地している{m_hit.collider.name}");
+
             if (m_anim)
             {
                 if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
-                if (m_anim.GetBool("IsFall") || m_anim.GetBool("IsLanding"))
+                if (m_anim.GetBool("IsFall") || m_anim.GetBool("IsLanding"))//here
                 {
                     m_horizontal = 0f;
                     m_virtical = 0f;
                     m_anim.SetBool("IsFall", false);
                 }
-            }
-
-            if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
-            else if (!LockOnController.IsLock)
-            {
-                /*ロックオン状態でなければ普通に動く*/
-                Quaternion targetRotation = Quaternion.LookRotation(m_dir);
-                this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
-            }
-            else
-            {
-                Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
-                lookAtTarget.y = this.transform.position.y;
-                this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
             }
 
             if (Input.GetButtonDown("Jump"))
