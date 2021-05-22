@@ -93,7 +93,6 @@ public class GrapplingManager : MonoBehaviour
                 PullTarget(m_joint, m_lockOn.GetTarget);
             }
         }
-
     }
 
     /// <summary>

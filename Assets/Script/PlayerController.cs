@@ -90,16 +90,10 @@ public class PlayerController : MonoBehaviour
         else if (!LockOnController.IsLock)
         {
             /*ロックオン状態でなければ普通に動く*/
-            if (IsGround())
-            {
-                m_dir = Camera.main.transform.TransformDirection(m_dir);    // メインカメラを基準に入力方向のベクトルを変換する
-                m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-            }
-            else
-            {
-                m_dir = this.transform.TransformDirection(m_dir);
-                m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-            }
+
+            m_dir = Camera.main.transform.TransformDirection(m_dir);
+            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+
             Quaternion targetRotation = Quaternion.LookRotation(m_dir);
             this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
         }
