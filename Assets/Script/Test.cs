@@ -25,6 +25,8 @@ public class Test : MonoBehaviour
             canvasRect.width - icon.rectTransform.rect.width,
             canvasRect.height - icon.rectTransform.rect.height
         );
+
+       
     }
 
     void Update()

@@ -17,7 +17,7 @@ public class GrapplingManager : MonoBehaviour
     [SerializeField] float m_pullTime = 0.2f;
 
     [SerializeField] bool isEnable;
-
+    
     Rigidbody m_playerRb;
     Rigidbody m_targetRb;
     ConfigurableJoint m_joint;

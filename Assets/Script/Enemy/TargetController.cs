@@ -24,13 +24,13 @@ public class TargetController : MonoBehaviour
     private void OnBecameVisible()
     {
         m_isTargetable = true;
-        Debug.Log("OnBecameVisible()");
+        Debug.Log($"{this.gameObject.name}::OnBecameVisible()");
     }
 
     private void OnBecameInvisible()
     {
         m_isTargetable = false;
-        Debug.Log("OnBecameInvisible()");
+        Debug.Log($"{this.gameObject.name}::OnBecameInvisible()");
     }
 
 }
