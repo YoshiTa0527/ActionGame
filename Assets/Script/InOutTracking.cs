@@ -3,18 +3,19 @@ using UnityEngine.UI;
 using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
+using UnityEditor;
 
 public class InOutTracking : MonoBehaviour
 {
 
-    [SerializeField] Transform target;
+    [SerializeField] Transform testTarget;
     [SerializeField] Image icon;
     [SerializeField] GameObject m_grapplingPointParent = null;
     /// <summary>この距離内にあるオブジェクトから一つ選ぶ</summary>
     [SerializeField] float m_distance = 5f;
     GameObject m_nextTarget;
     TargetController m_target;
-    public TargetController m_GetTarget { get { return m_target; } }
+    public TargetController GetGrapplingTarget { get { return m_target; } }
 
     Rect m_canvasRect;
     List<TargetController> m_tcs = new List<TargetController>();
@@ -40,25 +41,30 @@ public class InOutTracking : MonoBehaviour
         m_tcs.Clear();
         /*ポイントを全て取得*/
         m_tcs = m_grapplingPointParent.transform.GetComponentsInChildren<TargetController>().ToList();
+        /*取得したポイントの中から一定距離内のもので、*/
+        m_target = GetTarget(m_tcs);
+        m_tcs.ForEach(tcs => Debug.Log("name:" + tcs.name));
 
-        m_tcs.ForEach(tcs => Debug.Log("name" + tcs.name));
-
-        var viewport = Camera.main.WorldToViewportPoint(DetectNearlestTarget(m_tcs).transform.position);
-        m_target = DetectNearlestTarget(m_tcs);
-
-        if (m_target.IsHookable)
+        if (m_target)
         {
-            icon.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
-        }
-        else if (!m_target.IsHookable)
-        {
-            // 画面内で対象を追跡
-            viewport.x = Mathf.Clamp01(viewport.x);
-            viewport.y = Mathf.Clamp01(viewport.y);
-            Debug.Log($"x::{viewport.x}y;;{viewport.x}");
-            if (viewport.y > 0.7f)
+            Debug.Log($"target:{m_target.gameObject.name}");
+            icon.enabled = true;
+            var viewport = Camera.main.WorldToViewportPoint(m_target.transform.position);
+
+            if (m_target.IsHookable)
+            {
+                icon.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
+            }
+            else if (!m_target.IsHookable)
+            {
+                // 画面内で対象を追跡
+                viewport.x = Mathf.Clamp01(viewport.x);
+                viewport.y = Mathf.Clamp01(viewport.y);
+                Debug.Log($"x::{viewport.x}y;;{viewport.x}");
                 icon.rectTransform.anchoredPosition = Rect.NormalizedToPoint(m_canvasRect, viewport);
+            }
         }
+        else icon.enabled = false;
     }
 
     /// <summary>
@@ -74,7 +80,7 @@ public class InOutTracking : MonoBehaviour
     }
 
     /// <summary>
-    /// プレイヤーから一定距離内のオブジェクトを返す
+    /// プレイヤーから一定距離内のオブジェクトを配列にして返す
     /// </summary>
     /// <param name="targetList"></param>
     /// <returns></return>
@@ -93,27 +99,42 @@ public class InOutTracking : MonoBehaviour
     /// </summary>
     /// <param name="targets"></param>
     /// <returns></returns>
-    List<TargetController> GetTarget(List<TargetController> targets)
+    TargetController GetTarget(List<TargetController> targets)
     {
-        /*カメラより前方のものを探す*/
+        var nearTergets = DetectNearTargets(targets);
+        /*一定距離内に何もなかったら何もしない*/
+        if (nearTergets == null) return null;
 
-        TargetController[] nearTargets = DetectNearTargets(targets);
+        /*一定距離内のターゲットの中で、画面に映っているもの*/
+        var nearAndVisibleTarget = nearTergets.Where(t => t.IsHookable == true);
 
-        return nearTargets.ToList().Where(target =>
+        /*一定距離内のターゲットの中で、画面に映っているものがあるときは、画面の中央に近いものをターゲットとする*/
+        if (nearAndVisibleTarget.Count() > 0)
         {
-            Vector3 screenPoint = Camera.main.WorldToViewportPoint(target.transform.position);
-            return screenPoint.x > 0 && screenPoint.x < 1 && screenPoint.y > 0 && screenPoint.y < 1;
-        }).ToList();
+            float minTargetDistance = float.MaxValue;
+            TargetController target = null;
+            foreach (var t in nearAndVisibleTarget)
+            {
+                Vector3 targetScreenPoint = Camera.main.WorldToViewportPoint(t.transform.position);
+                float targetDistance = Vector2.Distance(
+                    new Vector2(0.5f, 0.5f),//画面中央
+                    new Vector2(targetScreenPoint.x, targetScreenPoint.y)
+                );
+                Debug.Log(t.gameObject + ": " + targetDistance);
 
-        //protected List<GameObject> FilterTargetObject(List<GameObject> hits)
-        //{
-        //    return hits
-        //        .Where(h => {
-        //            Vector3 screenPoint = Camera.main.WorldToViewportPoint(h.transform.position);
-        //            return screenPoint.x > 0 && screenPoint.x < 1 && screenPoint.y > 0 && screenPoint.y < 1;
-        //        })
-        //        .Where(h => h.tag == "Enemy")
-        //        .ToList();
-        //}
+                if (targetDistance < minTargetDistance)
+                {
+                    minTargetDistance = targetDistance;
+                    target = t;
+                }
+            }
+            return target;
+        }
+        else /*画面内に写っているものが無ければ最も近いものがターゲット*/
+        {
+            return DetectNearlestTarget(targets);
+        }
+
+
     }
 }

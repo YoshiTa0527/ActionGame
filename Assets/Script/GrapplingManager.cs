@@ -17,7 +17,11 @@ public class GrapplingManager : MonoBehaviour
     [SerializeField] float m_pullTime = 0.2f;
 
     [SerializeField] bool isEnable;
-    
+
+    [SerializeField] InOutTracking m_iot;
+
+    GameObject m_currentTarget;
+
     Rigidbody m_playerRb;
     Rigidbody m_targetRb;
     ConfigurableJoint m_joint;
@@ -42,39 +46,50 @@ public class GrapplingManager : MonoBehaviour
         /*ロックオン中ならターゲットにフックをつける*/
         if (LockOnController.IsLock)
         {
+            m_currentTarget = m_lockOn.GetTarget;
             if (Input.GetButtonDown("Fire1"))
             {
                 if (!IsHooked)
                 {
                     IsHooked = true;
-                    Hook(m_joint, m_lockOn.GetTarget);
+                    Hook(m_joint, m_currentTarget);
                 }
                 else IsHooked = false;
             }
         }
-        else
+        else if (!LockOnController.IsLock && m_iot.GetGrapplingTarget)
         {
-            IsHooked = false;
+            m_currentTarget = m_iot.GetGrapplingTarget.gameObject;
+            if (Input.GetButtonDown("Fire1"))
+            {
+                if (!IsHooked)
+                {
+                    IsHooked = true;
+                    Hook(m_joint, m_currentTarget);
+                }
+                else IsHooked = false;
+            }
         }
+        else IsHooked = false;
 
         if (IsHooked)
         {
-            DrawLine(m_sourcePos.position, m_lockOn.GetTarget.transform.position);
-            if (Vector3.Distance(this.transform.position, m_lockOn.GetTarget.transform.position) <= m_disToDecelerateTarget)
+            DrawLine(m_sourcePos.position, m_currentTarget.transform.position);
+            if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget)
             {
                 Debug.Log("Grapple::近づいた");
-                if (m_lockOn.GetTarget.tag == "Enemy")
+                if (m_currentTarget.tag == "Enemy")
                 {
-                    m_targetRb = m_lockOn.GetTarget.GetComponent<Rigidbody>();
+                    m_targetRb = m_currentTarget.GetComponent<Rigidbody>();
                     m_targetRb.velocity = Vector3.zero;
                     LoseHook(m_joint);
                     IsHooked = false;
                 }
                 else
                 {
-                    float yAbs = Mathf.Abs(m_lockOn.GetTarget.transform.position.y - this.transform.position.y);
+                    float yAbs = Mathf.Abs(m_currentTarget.transform.position.y - this.transform.position.y);
                     Debug.Log("Grapple::近づいた" + yAbs);
-                    if (CalcValue(yAbs, 1f) && this.transform.position.y > m_lockOn.GetTarget.transform.position.y)
+                    if (CalcValue(yAbs, 1f) && this.transform.position.y > m_currentTarget.transform.position.y)
                     {
                         Debug.Log("高さほぼ一緒");
                         m_playerRb = this.gameObject.GetComponent<Rigidbody>();
@@ -90,7 +105,7 @@ public class GrapplingManager : MonoBehaviour
             if (m_timer > m_pullTime)
             {
                 m_timer = 0;
-                PullTarget(m_joint, m_lockOn.GetTarget);
+                PullTarget(m_joint, m_currentTarget);
             }
         }
     }
