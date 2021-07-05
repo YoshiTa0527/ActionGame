@@ -162,6 +162,7 @@ public class PlayerController : MonoBehaviour
             }
             else
             {
+                /*シンプルアニメーション*/
                 Debug.Log(PlayerState.m_PlayerDirState.ToString());
                 m_anim.SetBool("isLockOn", true);
                 if (IsSprint) IsSprint = false;
@@ -204,7 +205,8 @@ public class PlayerController : MonoBehaviour
         m_canmove = false;
         if (m_anim) m_anim.SetFloat("spd", 0f);
         m_turnSpeed = 0;
-        m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
+        m_rb.velocity = Vector3.zero;
+        // m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
         Debug.Log("CanNotMoveCalled");
     }
     public void Jump()
@@ -217,6 +219,7 @@ public class PlayerController : MonoBehaviour
     {
         Ray ray = new Ray(this.transform.position + m_colider.center, Vector3.down);
         bool isGround = Physics.SphereCast(ray, m_sphereRadius, out m_hit, m_rayMaxDistance, m_groundMask);
+        if (isGround) Debug.Log("Player::接地中");
         Debug.DrawRay(this.transform.position + m_colider.center, Vector3.down, Color.red);
         return isGround;
     }

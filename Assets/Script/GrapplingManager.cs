@@ -130,7 +130,7 @@ public class GrapplingManager : MonoBehaviour
             joint.connectedBody = m_targetRb;
             var cj = joint.linearLimit;
             m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-            if (target.tag == "Enemy") EnableFreezePos(this.gameObject);
+            EnableFreezePos(this.gameObject);
 
             cj.limit = Vector3.Distance(this.transform.position, target.transform.position);
             joint.linearLimit = cj;
@@ -160,6 +160,7 @@ public class GrapplingManager : MonoBehaviour
 
     void PullTarget(ConfigurableJoint joint, GameObject target)
     {
+        DisableFreezePos(this.gameObject);
         var cj = joint.linearLimit;
 
         cj.limit = m_pullLimit;

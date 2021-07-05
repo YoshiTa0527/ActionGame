@@ -60,7 +60,7 @@ public class LockOnController : MonoBehaviour
 
     private void Update()
     {
-        if (!m_player) return;
+        if (!m_player || !m_enemyParent) return;
         m_targets.Clear();
         if (m_targetGroup && m_targetGroup.m_Targets.Length > 2) m_targetGroup.RemoveMember(m_targetGroup.m_Targets[1].target.transform);
         //現在のターゲットから画面から消えた、または射程距離外に外れたら、ターゲットを消す

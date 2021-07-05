@@ -38,11 +38,13 @@ public class InOutTracking : MonoBehaviour
      */
     void Update()
     {
+        if (!m_grapplingPointParent) return;
         m_tcs.Clear();
         /*ポイントを全て取得*/
         m_tcs = m_grapplingPointParent.transform.GetComponentsInChildren<TargetController>().ToList();
-        /*取得したポイントの中から一定距離内のもので、*/
-        m_target = GetTarget(m_tcs);
+        /*プレイヤーがグラップル中の時はターゲットを変えない*/
+        if (!GrapplingManager.IsHooked) m_target = GetTarget(m_tcs);
+        Debug.Log("iot:" + GrapplingManager.IsHooked);
         m_tcs.ForEach(tcs => Debug.Log("name:" + tcs.name));
 
         if (m_target)
@@ -65,18 +67,6 @@ public class InOutTracking : MonoBehaviour
             }
         }
         else icon.enabled = false;
-    }
-
-    /// <summary>
-    /// 一番近いターゲットを返す
-    /// </summary>
-    /// <param name="targetList"></param>
-    /// <returns></returns>
-    TargetController DetectNearlestTarget(List<TargetController> targetList)
-    {
-        TargetController nearlestTarget = targetList.OrderBy(t => Vector3.Distance(this.transform.position, t.gameObject.transform.position)).FirstOrDefault();
-        Debug.Log($"最も近いポイント{nearlestTarget.gameObject.name}");
-        return nearlestTarget;
     }
 
     /// <summary>
@@ -120,8 +110,7 @@ public class InOutTracking : MonoBehaviour
                     new Vector2(0.5f, 0.5f),//画面中央
                     new Vector2(targetScreenPoint.x, targetScreenPoint.y)
                 );
-                Debug.Log(t.gameObject + ": " + targetDistance);
-
+                Debug.Log($"ターゲット:{t}とのスクリーン上の距離:" + targetDistance);
                 if (targetDistance < minTargetDistance)
                 {
                     minTargetDistance = targetDistance;
@@ -132,7 +121,7 @@ public class InOutTracking : MonoBehaviour
         }
         else /*画面内に写っているものが無ければ最も近いものがターゲット*/
         {
-            return DetectNearlestTarget(targets);
+            return DetectNearTargets(targets).FirstOrDefault();
         }
 
 
