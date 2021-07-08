@@ -39,6 +39,29 @@ public class Test : MonoBehaviour
 
     SimpleAnimation m_simpleAnim;
     bool m_isInTheAir;
+    bool m_isAtacking;
+    bool m_isDead;
+    State m_currentState = State.Idle;
+    State currentState
+    {
+        get => m_currentState;
+        set
+        {
+            if (m_isDead) return;
+            m_currentState = value;
+        }
+    }
+
+    public enum State
+    {
+        Idle,
+        Run,
+        Sprint,
+        Jump,
+        Atack,
+        LockOn,
+        Dead,
+    }
 
     private void Start()
     {
@@ -81,6 +104,7 @@ public class Test : MonoBehaviour
                         }
                         else IsSprint = false;
                     }
+
                 }
                 break;
             case PlayerStates.OpenUi:
@@ -90,70 +114,115 @@ public class Test : MonoBehaviour
         }
 
 
-        m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
+
+
+
         if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
-        else if (!LockOnController.IsLock)
+
+
+        Debug.Log("CurrentState:" + m_currentState);
+        switch (m_currentState)
         {
-            /*ロックオン状態でなければ普通に動く*/
-
-            m_dir = Camera.main.transform.TransformDirection(m_dir);
-            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-
-            Quaternion targetRotation = Quaternion.LookRotation(m_dir);
-            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
-        }
-        else
-        {
-            m_dir = this.transform.TransformDirection(m_dir);
-            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-
-            Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
-            lookAtTarget.y = this.transform.position.y;
-            this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
-        }
-
-        /*ロックオン中、スプリント中で速度を変える*/
-        if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
-        else
-        {
-            if (IsSprint) m_spdTemp = m_sprintSpeed;
-            else m_spdTemp = m_defaultMovingSpeed;
-        }
-
-        if (IsGround())
-        {
-            Debug.Log($"接地している:{m_isInTheAir}");
-            m_isInTheAir = false;
-
-            if (Input.GetButtonDown("Jump"))
-            {
-                Jump();
-            }
-        }
-        else
-        {
-            Debug.Log($"接地していない");
-            m_isInTheAir = true;
-        }
-
-        /*simpleAnimationに関する処理*/
-        if (m_simpleAnim)
-        {
-            if (!IsGround())
-            {
-                if (m_rb.velocity.y > 0) m_simpleAnim.CrossFade("JumpStart", 0.1f);
-                else if (m_rb.velocity.y < 0) m_simpleAnim.CrossFade("JumpMidAir", 0.1f);
-            }
-            else
-            {
+            case State.Idle:
+                m_simpleAnim.Stop("Atack");
                 if (m_horizontal != 0 || m_virtical != 0)
                 {
-                    if (IsSprint) m_simpleAnim.CrossFade("Sprint", 0.1f);
-                    else m_simpleAnim.CrossFade("Run", 0.1f);
+                    Run();
                 }
-                else m_simpleAnim.CrossFade("Default", 0.1f);
-            }
+                if (Input.GetButtonDown("Fire1"))
+                {
+                    Atack();
+                }
+                if (Input.GetButtonDown("Jump"))
+                {
+                    Jump();
+                }
+                break;
+            case State.Run:
+                NormalMove();
+                m_simpleAnim.Stop("Atack");
+                if (m_horizontal == 0 && m_virtical == 0)
+                {
+                    Idle();
+                }
+                if (Input.GetButtonDown("Jump"))
+                {
+                    Jump();
+                }
+                if (Input.GetButtonDown("Fire1"))
+                {
+                    Atack();
+                }
+                break;
+            case State.Sprint:
+
+                break;
+            case State.Jump:
+                m_simpleAnim.CrossFade("JumpMidAir", 0.1f);
+                if (m_rb.velocity.y == 0) Idle();
+                break;
+            case State.Atack:
+                m_rb.velocity = Vector3.zero;
+                if (!m_simpleAnim.IsPlaying("Atack"))
+                {
+                    m_simpleAnim.CrossFade("Default", 0.2f);
+                    m_currentState = State.Idle;
+                }
+
+                break;
+            case State.LockOn:
+                break;
+            case State.Dead:
+                break;
+            default:
+                break;
         }
+
+
+
+    }
+
+    private void LockOnMove()
+    {
+        m_dir = this.transform.TransformDirection(m_dir);
+        m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+
+        Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
+        lookAtTarget.y = this.transform.position.y;
+        this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
+    }
+
+    private void NormalMove()
+    {
+        if (!IsGround()) return;
+        /*ロックオン状態でなければ普通に動く*/
+        m_dir = Camera.main.transform.TransformDirection(m_dir);
+        m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+        Quaternion targetRotation = Quaternion.LookRotation(m_dir);
+        this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
+        m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
+        m_simpleAnim.CrossFade("Run", 0.1f);
+    }
+
+    void Idle()
+    {
+        m_simpleAnim.CrossFade("Default", 0.1f);
+        m_currentState = State.Idle;
+    }
+
+    void Run()
+    {
+        m_simpleAnim.CrossFade("Run", 0.1f);
+        m_currentState = State.Run;
+    }
+
+    public void Atack()
+    {
+        Debug.Log("ATack::test");
+
+        m_simpleAnim.CrossFade("Atack", 0.1f);
+
+        m_currentState = State.Atack;
     }
     public void CanMove()
     {
@@ -174,7 +243,11 @@ public class Test : MonoBehaviour
     }
     public void Jump()
     {
+        if (!IsGround()) return;
+        if (m_currentState == State.Jump) return;
         m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
+        m_simpleAnim.CrossFade("JumpStart", 0.1f);
+        m_currentState = State.Jump;
     }
     private static RaycastHit m_hit;
     bool IsGround()

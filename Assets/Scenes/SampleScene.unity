@@ -964,7 +964,7 @@ Transform:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 925110090}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 1.151762, z: -5.666172}
+  m_LocalPosition: {x: 0, y: 4.173714, z: -5.415632}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
   - {fileID: 1493479727}
@@ -1206,7 +1206,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 963194225}
-  m_LocalRotation: {x: 0.17367466, y: -0.1861262, z: 0.033446677, w: 0.96647584}
+  m_LocalRotation: {x: 0.17367466, y: -0.18612625, z: 0.033446684, w: 0.96647584}
   m_LocalPosition: {x: 1.3356969, y: 1.3356969, z: -3.3392425}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children: []
@@ -1434,9 +1434,21 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 459115ace44b59f41b84092d6461862e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  target: {fileID: 0}
-  targetCamera: {fileID: 0}
-  icon: {fileID: 0}
+  m_defaultMovingSpeed: 5
+  m_sprintSpeed: 8
+  m_lockOnMoveSpeed: 3
+  m_turnSpeed: 5
+  m_jumpPower: 5
+  m_limitSpeed: 20
+  m_decelerateSpeed: 1.1
+  m_landingMotionDisForRay: 3
+  m_fallMotionDisForRay: 1
+  m_sphereRadius: 1
+  m_rayMaxDistance: 1
+  m_groundMask:
+    serializedVersion: 2
+    m_Bits: 0
+  isEnable: 0
 --- !u!4 &1222686019
 Transform:
   m_ObjectHideFlags: 0
@@ -1635,7 +1647,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1493479725}
-  m_LocalRotation: {x: -0.06592433, y: -9.447756e-10, z: -6.241962e-11, w: 0.99782467}
+  m_LocalRotation: {x: 0.19555357, y: -0.000000058319497, z: 0.000000011629107, w: 0.9806931}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -2252,8 +2264,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1738872472}
-  m_LocalRotation: {x: -0.048209377, y: -0.000000048460148, z: -0.0000000023389533,
-    w: 0.9988373}
+  m_LocalRotation: {x: 0.21260095, y: -0.000000016408581, z: 0.000000003570095, w: 0.9771391}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -2615,6 +2626,10 @@ PrefabInstance:
       propertyPath: m_fallMotionDis
       value: 2
       objectReference: {fileID: 0}
+    - target: {fileID: 902843018, guid: 1e6d1ea1d2d242141b6f07445d02d8bc, type: 3}
+      propertyPath: m_lockOnMoveSpeed
+      value: 2
+      objectReference: {fileID: 0}
     - target: {fileID: 1466868581, guid: 1e6d1ea1d2d242141b6f07445d02d8bc, type: 3}
       propertyPath: m_lockOnMarkerImage
       value: 
@@ -2919,7 +2934,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1990411236}
-  m_LocalRotation: {x: 0.17367466, y: -0.1861262, z: 0.033446677, w: 0.96647584}
+  m_LocalRotation: {x: 0.17367466, y: -0.18612625, z: 0.033446684, w: 0.96647584}
   m_LocalPosition: {x: 2, y: 2, z: -5}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -3181,7 +3196,7 @@ Transform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 2132016810}
-  m_LocalRotation: {x: 0.1001009, y: 0.000000130608, z: -0.000000013139978, w: 0.9949773}
+  m_LocalRotation: {x: 0.32243663, y: -0.00000008197936, z: 0.00000002792457, w: 0.9465911}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_Children:
@@ -3189,3 +3204,69 @@ Transform:
   m_Father: {fileID: 925110092}
   m_RootOrder: 2
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &2146154978 stripped
+GameObject:
+  m_CorrespondingSourceObject: {fileID: 1050060054465924001, guid: 1e6d1ea1d2d242141b6f07445d02d8bc,
+    type: 3}
+  m_PrefabInstance: {fileID: 1878569882}
+  m_PrefabAsset: {fileID: 0}
+--- !u!114 &2146154987
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2146154978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3759e2aae0f7b9a47bb98fc64bf3c543, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  m_PlayAutomatically: 1
+  m_AnimatePhysics: 0
+  m_CullingMode: 1
+  m_WrapMode: 0
+  m_Clip: {fileID: 7400000, guid: 3e331de7ae1981a4d80aa5799e9b3afe, type: 3}
+  m_States:
+  - clip: {fileID: 7400000, guid: 3e331de7ae1981a4d80aa5799e9b3afe, type: 3}
+    name: Default
+    defaultState: 1
+  - clip: {fileID: 7400002, guid: cdcf0f712db52854aaa116824fd83296, type: 3}
+    name: Run
+    defaultState: 0
+  - clip: {fileID: 7400002, guid: 89b9b900b51d4df4cbe7f2a5373669ba, type: 3}
+    name: Sprint
+    defaultState: 0
+  - clip: {fileID: 7400008, guid: 7f0ffdcc529388b48bf0f30b84d26263, type: 3}
+    name: JumpStart
+    defaultState: 0
+  - clip: {fileID: 7400012, guid: 7f0ffdcc529388b48bf0f30b84d26263, type: 3}
+    name: JumpMidAir
+    defaultState: 0
+  - clip: {fileID: 7400000, guid: c229d4cc51df8a34b986ba91bdc13060, type: 2}
+    name: WalkLeft
+    defaultState: 0
+  - clip: {fileID: 7400000, guid: c0b424ec91b66424bbc3941c49f3e3d8, type: 2}
+    name: WalkRight
+    defaultState: 0
+  - clip: {fileID: 7400000, guid: 6d53885e67da1d244b6798f584f00ca4, type: 2}
+    name: WalkBack
+    defaultState: 0
+  - clip: {fileID: 7400000, guid: d8f1c28588f17284b889aba472d48111, type: 2}
+    name: WalkForward
+    defaultState: 0
+  - clip: {fileID: 7400000, guid: 714d82ea22e37c648a0fcb17d72b2a5a, type: 2}
+    name: Atack
+    defaultState: 0
+--- !u!114 &2146154988
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2146154978}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc7afa04decd4b94d8834c2afa3eaef3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 

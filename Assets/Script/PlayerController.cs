@@ -20,31 +20,33 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_jumpPower = 5f;
     [SerializeField] float m_limitSpeed = 20f;
     [SerializeField] float m_decelerateSpeed = 1.1f;
-    [SerializeField] float m_landingMotionDis = 3f;
-    [SerializeField] float m_fallMotionDis = 1f;
-    [SerializeField] float m_movingPowerInTheAir = 2f;
+    [SerializeField] float m_landingMotionDisForRay = 3f;
+    [SerializeField] float m_fallMotionDisForRay = 1f;
     float m_highestPos;
     float m_spdTemp;
     float m_turnSpdTemp;
     bool m_canmove = true;
+    bool m_isAtacking;
     static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
     [SerializeField] float m_rayMaxDistance = 1f;
     [SerializeField] LayerMask m_groundMask;
     /// <summary>このコライダーを中心に設置判定のrayを出す</summary>
-    [SerializeField] CapsuleCollider m_colider;
+    CapsuleCollider m_colider;
     /// <summary>ロックオンに関するフィールド</summary>
     LockOnController m_loc;
     Rigidbody m_rb;
-    Animator m_anim;
+
+    SimpleAnimation m_simpleAnim;
+    bool m_isInTheAir;
 
     private void Start()
     {
         m_rb = GetComponent<Rigidbody>();
         m_loc = FindObjectOfType<LockOnController>();
         m_colider = GetComponent<CapsuleCollider>();
-        m_anim = GetComponent<Animator>();
+        m_simpleAnim = GetComponent<SimpleAnimation>();
         m_spdTemp = m_defaultMovingSpeed;
         m_turnSpdTemp = m_turnSpeed;
     }
@@ -52,6 +54,7 @@ public class PlayerController : MonoBehaviour
     private void FixedUpdate()
     {
         Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
+        if (!IsGround()) velo = m_dir.normalized * m_spdTemp / 2;
         velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
         m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
     }
@@ -73,9 +76,18 @@ public class PlayerController : MonoBehaviour
                     if (Input.GetButtonDown("Sprint"))
                     {
                         Debug.Log("SprintButtonPushed");
-                        if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
+                        if (!IsSprint && !LockOnController.IsLock)
+                        {// m_rb.velocity = Vector3.zero;
+                            IsSprint = true;
+                        }
                         else IsSprint = false;
                     }
+
+                    if (Input.GetButtonDown("Atack"))
+                    {
+                        m_isAtacking = true;
+                    }
+
                 }
                 break;
             case PlayerStates.OpenUi:
@@ -87,48 +99,20 @@ public class PlayerController : MonoBehaviour
 
         m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
         if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
-        else if (!LockOnController.IsLock)
+        else if (LockOnController.IsLock)
         {
-            /*ロックオン状態でなければ普通に動く*/
-
-            m_dir = Camera.main.transform.TransformDirection(m_dir);
-            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-
-            Quaternion targetRotation = Quaternion.LookRotation(m_dir);
-            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
+            /*ロックオン状態だと敵を見ながら動く*/
+            LockOnMoveUpdate();
         }
         else
         {
-            m_dir = this.transform.TransformDirection(m_dir);
-            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
-
-            Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
-            lookAtTarget.y = this.transform.position.y;
-            this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
-        }
-
-        /*ロックオン中、スプリント中で速度を変える*/
-        if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
-        else
-        {
-            if (IsSprint) m_spdTemp = m_sprintSpeed;
-            else m_spdTemp = m_defaultMovingSpeed;
+            NormalMoveUpdate();
         }
 
         if (IsGround())
         {
-            Debug.Log($"接地している{m_hit.collider.name}");
-
-            if (m_anim)
-            {
-                if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
-                if (m_anim.GetBool("IsFall") || m_anim.GetBool("IsLanding"))//here
-                {
-                    m_horizontal = 0f;
-                    m_virtical = 0f;
-                    m_anim.SetBool("IsFall", false);
-                }
-            }
+            Debug.Log($"接地している:{m_isInTheAir}");
+            m_isInTheAir = false;
 
             if (Input.GetButtonDown("Jump"))
             {
@@ -138,60 +122,113 @@ public class PlayerController : MonoBehaviour
         else
         {
             Debug.Log($"接地していない");
-            if (m_anim)
-            {
-                if (!m_anim.GetBool("Jump")) m_anim.SetBool("Jump", true);
-                Ray ray = new Ray(this.transform.position, Vector3.down);
-                /*落下中は落ちるモーションを取る*/
-                if (m_rb.velocity.y < 0)
-                {
-                    if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
-                    if (!m_anim.GetBool("IsFall") && !Physics.Raycast(ray, m_fallMotionDis)) m_anim.SetBool("IsFall", true);
-                    else if (m_anim.GetBool("IsFall") && Physics.Raycast(ray, m_fallMotionDis)) m_anim.SetBool("IsLanding", true);
-                }
-            }
+            m_isInTheAir = true;
         }
 
-        if (m_anim)
+        /*simpleAnimationに関する処理*/
+        if (m_simpleAnim)
         {
-            if (!LockOnController.IsLock)
+            if (!IsGround())
             {
-                m_anim.SetBool("isLockOn", false);
-                m_anim.SetFloat("spd", m_rb.velocity.magnitude);
-                m_anim.SetInteger("LockOnMotion", 0);
+                if (m_rb.velocity.y > 0) m_simpleAnim.CrossFade("JumpStart", 0.1f);
+                else if (m_rb.velocity.y < 0) m_simpleAnim.CrossFade("JumpMidAir", 0.1f);
             }
             else
             {
-                /*シンプルアニメーション*/
-                Debug.Log(PlayerState.m_PlayerDirState.ToString());
-                m_anim.SetBool("isLockOn", true);
-                if (IsSprint) IsSprint = false;
-                if (IsGround())
+                //if (m_horizontal != 0 || m_virtical != 0)
+                //{
+                //    if (IsSprint) m_simpleAnim.CrossFade("Sprint", 0.1f);
+                //    else m_simpleAnim.CrossFade("Run", 0.1f);
+
+                //    if (LockOnController.IsLock)
+                //    {
+                //        Debug.Log("居ずロック");
+                //        switch (PlayerState.m_PlayerDirState)
+                //        {
+                //            case PlayerMovingDirection.Neutral:
+                //                m_simpleAnim.CrossFade("Default", 0.1f);
+                //                break;
+                //            case PlayerMovingDirection.Forward:
+                //                m_simpleAnim.CrossFade("WalkForward", 0.1f);
+                //                Debug.Log("Forward");
+                //                break;
+                //            case PlayerMovingDirection.Right:
+                //                m_simpleAnim.CrossFade("WalkRight", 0.1f);
+                //                break;
+                //            case PlayerMovingDirection.Left:
+                //                m_simpleAnim.CrossFade("WalkLeft", 0.1f);
+                //                break;
+                //            case PlayerMovingDirection.Back:
+                //                m_simpleAnim.CrossFade("WalkBack", 0.1f);
+                //                break;
+                //            default:
+                //                break;
+                //        }
+                //    }
+                //}
+                //else if (m_horizontal == 0 && m_virtical == 0) m_simpleAnim.CrossFade("Default", 0.1f);
+
+                Debug.Log($"再生中{m_simpleAnim.IsPlaying("Atack")}");
+
+                switch (PlayerState.m_PlayerDirState)
                 {
-                    switch (PlayerState.m_PlayerDirState)
-                    {
-                        case PlayerMovingDirection.Neutral:
-                            m_anim.SetInteger("LockOnMotion", 0);
-                            break;
-                        case PlayerMovingDirection.Forward:
-                            m_anim.SetInteger("LockOnMotion", 1);
-                            break;
-                        case PlayerMovingDirection.Right:
-                            m_anim.SetInteger("LockOnMotion", 3);
-                            break;
-                        case PlayerMovingDirection.Left:
-                            m_anim.SetInteger("LockOnMotion", 4);
-                            break;
-                        case PlayerMovingDirection.Back:
-                            m_anim.SetInteger("LockOnMotion", 2);
-                            break;
-                        default:
-                            break;
-                    }
+                    case MovingDirection.Neutral:
+                        if (m_isAtacking)
+                        {
+                            m_simpleAnim.CrossFade("Atack", 0.1f);
+
+                        }
+                        else m_simpleAnim.CrossFade("Default", 0.1f);
+                        break;
+                    case MovingDirection.Move:
+                        if (IsSprint) m_simpleAnim.CrossFade("Sprint", 0.1f);
+                        else m_simpleAnim.CrossFade("Run", 0.1f);
+                        break;
+                    case MovingDirection.Forward:
+                        m_simpleAnim.CrossFade("WalkForward", 0.1f);
+                        break;
+                    case MovingDirection.Right:
+                        m_simpleAnim.CrossFade("WalkRight", 0.1f);
+                        break;
+                    case MovingDirection.Left:
+                        m_simpleAnim.CrossFade("WalkLeft", 0.1f);
+                        break;
+                    case MovingDirection.Back:
+                        m_simpleAnim.CrossFade("WalkBack", 0.1f);
+                        break;
+                    default:
+                        break;
                 }
             }
         }
     }
+
+    public void EndAtack()
+    {
+        m_isAtacking = false;
+    }
+
+    private void LockOnMoveUpdate()
+    {
+        m_spdTemp = m_lockOnMoveSpeed;
+        Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
+        m_dir = this.transform.TransformDirection(m_dir);
+        m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+        lookAtTarget.y = this.transform.position.y;
+        this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
+    }
+
+    private void NormalMoveUpdate()
+    {
+        if (IsSprint) { m_spdTemp = m_sprintSpeed; }
+        else m_spdTemp = m_defaultMovingSpeed;
+
+        m_dir = Camera.main.transform.TransformDirection(m_dir);
+        m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+        Quaternion targetRotation = Quaternion.LookRotation(m_dir);
+        this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
+    }
+
     public void CanMove()
     {
         m_canmove = true;
@@ -203,7 +240,7 @@ public class PlayerController : MonoBehaviour
     public void CanNotMove()
     {
         m_canmove = false;
-        if (m_anim) m_anim.SetFloat("spd", 0f);
+
         m_turnSpeed = 0;
         m_rb.velocity = Vector3.zero;
         // m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
@@ -211,7 +248,6 @@ public class PlayerController : MonoBehaviour
     }
     public void Jump()
     {
-        if (m_anim) m_anim.SetBool("Jump", true);
         m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
     }
     private static RaycastHit m_hit;

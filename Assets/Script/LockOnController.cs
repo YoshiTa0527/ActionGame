@@ -122,6 +122,7 @@ public class LockOnController : MonoBehaviour
             Debug.Log("スティック押し込み");
             if (!IsLock)
             {
+                PlayerController.IsSprint = false;
                 DetectNearestTarget();
                 LockOnEnemy(m_orderedTargets[m_targetIndex]);
             }

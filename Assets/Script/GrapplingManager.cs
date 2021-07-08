@@ -160,7 +160,7 @@ public class GrapplingManager : MonoBehaviour
 
     void PullTarget(ConfigurableJoint joint, GameObject target)
     {
-        DisableFreezePos(this.gameObject);
+        if (target.tag != "Enemy") DisableFreezePos(this.gameObject);
         var cj = joint.linearLimit;
 
         cj.limit = m_pullLimit;

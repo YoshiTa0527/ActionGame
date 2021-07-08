@@ -98,6 +98,13 @@ public partial class SimpleAnimationPlayable : PlayableBehaviour
     {
         //Start new State
         StateInfo newState = m_States.InsertState();
+
+        //Loop‚µ‚È‚¢‚à‚Ì‚ÍWrapMode‚ÉOnce‚ð–¾Ž¦“I‚ÉŽw’è
+        if (!clip.isLooping && clip.wrapMode == WrapMode.Default)
+        {
+            clip.wrapMode = WrapMode.Once;
+        }
+
         newState.Initialize(name, clip, clip.wrapMode);
         //Find at which input the state will be connected
         int index = newState.index;
@@ -335,7 +342,7 @@ public partial class SimpleAnimationPlayable : PlayableBehaviour
 
     public int GetClipCount()
     {
-        int count=0;
+        int count = 0;
         for (int i = 0; i < m_States.Count; i++)
         {
             if (m_States[i] != null)
@@ -500,7 +507,7 @@ public partial class SimpleAnimationPlayable : PlayableBehaviour
 
     private void CleanClonedStates()
     {
-        for (int i = m_States.Count-1; i >= 0; i--)
+        for (int i = m_States.Count - 1; i >= 0; i--)
         {
             StateInfo state = m_States[i];
             if (state == null)
@@ -548,7 +555,7 @@ public partial class SimpleAnimationPlayable : PlayableBehaviour
             //Update crossfade weight
             if (state.fading)
             {
-                state.SetWeight(Mathf.MoveTowards(state.weight, state.targetWeight, state.fadeSpeed *deltaTime));
+                state.SetWeight(Mathf.MoveTowards(state.weight, state.targetWeight, state.fadeSpeed * deltaTime));
                 if (Mathf.Approximately(state.weight, state.targetWeight))
                 {
                     state.ForceWeight(state.targetWeight);
@@ -642,11 +649,11 @@ public partial class SimpleAnimationPlayable : PlayableBehaviour
             float speed = state.speed;
             float stateTime = m_States.GetStateTime(state.index);
             float remainingTime;
-            if (speed > 0 )
+            if (speed > 0)
             {
                 remainingTime = (state.clip.length - stateTime) / speed;
             }
-            else if(speed < 0 )
+            else if (speed < 0)
             {
                 remainingTime = (stateTime) / speed;
             }
@@ -683,7 +690,7 @@ public partial class SimpleAnimationPlayable : PlayableBehaviour
         float remainingTime = -1f;
 
         var it = m_StateQueue.First;
-        while(it != null)
+        while (it != null)
         {
             if (mustCalculateQueueTimes)
             {
