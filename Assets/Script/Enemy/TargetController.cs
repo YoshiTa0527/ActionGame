@@ -10,8 +10,15 @@ using UnityEngine;
 [RequireComponent(typeof(Rigidbody))]
 public class TargetController : MonoBehaviour
 {
+    bool m_isTarget = false;
     bool m_isTargetable = false;
     [SerializeField] public UnityEngine.UI.Text m_orderText = null;
+
+    /// <summary>
+    /// オブジェクトがロックオンされているかどうか返す
+    /// </summary>
+
+    public bool IsTarget { get => m_isTarget; set { m_isTarget = value; } }
 
     /// <summary>
     /// オブジェクトが画面内にあるかどうかを返す
@@ -30,6 +37,7 @@ public class TargetController : MonoBehaviour
     private void OnBecameInvisible()
     {
         m_isTargetable = false;
+        m_isTarget = false;
         Debug.Log($"{this.gameObject.name}::OnBecameInvisible()");
     }
 

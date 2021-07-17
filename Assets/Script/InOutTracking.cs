@@ -12,7 +12,7 @@ public class InOutTracking : MonoBehaviour
     [SerializeField] Image icon;
     [SerializeField] GameObject m_grapplingPointParent = null;
     /// <summary>この距離内にあるオブジェクトから一つ選ぶ</summary>
-    [SerializeField] float m_distance = 5f;
+    [SerializeField] float m_distance = 10f;
     GameObject m_nextTarget;
     TargetController m_target;
     public TargetController GetGrapplingTarget { get { return m_target; } }
@@ -44,15 +44,13 @@ public class InOutTracking : MonoBehaviour
         m_tcs = m_grapplingPointParent.transform.GetComponentsInChildren<TargetController>().ToList();
         /*プレイヤーがグラップル中の時はターゲットを変えない*/
         if (!GrapplingManager.IsHooked) m_target = GetTarget(m_tcs);
-        Debug.Log("iot:" + GrapplingManager.IsHooked);
-        m_tcs.ForEach(tcs => Debug.Log("name:" + tcs.name));
 
         if (m_target)
         {
             Debug.Log($"target:{m_target.gameObject.name}");
             icon.enabled = true;
             var viewport = Camera.main.WorldToViewportPoint(m_target.transform.position);
-
+            Debug.Log($"viewport:{viewport}");
             if (m_target.IsHookable)
             {
                 icon.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
@@ -77,6 +75,7 @@ public class InOutTracking : MonoBehaviour
     TargetController[] DetectNearTargets(List<TargetController> targetList)
     {
         TargetController[] nearlestTargets = targetList.Where(t => Vector3.Distance(this.transform.position, t.transform.position) < m_distance).ToArray();
+
         return nearlestTargets;
     }
 
@@ -92,8 +91,13 @@ public class InOutTracking : MonoBehaviour
     TargetController GetTarget(List<TargetController> targets)
     {
         var nearTergets = DetectNearTargets(targets);
+
         /*一定距離内に何もなかったら何もしない*/
-        if (nearTergets == null) return null;
+        if (nearTergets.Count() == 0)
+        {
+            m_target = null;
+            return null;
+        }
 
         /*一定距離内のターゲットの中で、画面に映っているもの*/
         var nearAndVisibleTarget = nearTergets.Where(t => t.IsHookable == true);

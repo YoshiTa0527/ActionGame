@@ -36,6 +36,9 @@ public class PlayerController : MonoBehaviour
     [SerializeField] CapsuleCollider m_colider;
     /// <summary>ロックオンに関するフィールド</summary>
     LockOnController m_loc;
+    /// <summary>攻撃判定に使うコライダー</summary>
+    [SerializeField] Collider m_atackCol;
+    [SerializeField] Collider m_upperAtackCol;
     Rigidbody m_rb;
     Animator m_anim;
 
@@ -66,16 +69,36 @@ public class PlayerController : MonoBehaviour
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
+                if (Input.GetButtonDown("Atack"))
+                {
+                    if (IsGround())
+                    {
+                        m_anim.SetTrigger("Atack1");
+                    }
+                    else
+                    {
+                        m_anim.SetTrigger("JumpAtack");
+                    }
+                    Debug.Log("AtackButtonPushed");
+                }
                 if (m_canmove)//here
                 {
+
                     m_horizontal = Input.GetAxisRaw("Horizontal");
                     m_virtical = Input.GetAxisRaw("Vertical");
+
                     if (Input.GetButtonDown("Sprint"))
                     {
                         Debug.Log("SprintButtonPushed");
                         if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
                         else IsSprint = false;
                     }
+                }
+                else
+                {
+                    m_horizontal = 0f;
+                    m_virtical = 0f;
+                    m_rb.velocity = Vector3.zero;
                 }
                 break;
             case PlayerStates.OpenUi:
@@ -111,58 +134,65 @@ public class PlayerController : MonoBehaviour
         if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
         else
         {
-            if (IsSprint) m_spdTemp = m_sprintSpeed;
-            else m_spdTemp = m_defaultMovingSpeed;
-        }
-
-        if (IsGround())
-        {
-            Debug.Log($"接地している{m_hit.collider.name}");
-
-            if (m_anim)
+            if (IsGround())
             {
-                if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
-                if (m_anim.GetBool("IsFall") || m_anim.GetBool("IsLanding"))//here
-                {
-                    m_horizontal = 0f;
-                    m_virtical = 0f;
-                    m_anim.SetBool("IsFall", false);
-                }
+                if (IsSprint) m_spdTemp = m_sprintSpeed;
+                else m_spdTemp = m_defaultMovingSpeed;
             }
-
-            if (Input.GetButtonDown("Jump"))
+            else
             {
-                Jump();
-            }
-        }
-        else
-        {
-            Debug.Log($"接地していない");
-            if (m_anim)
-            {
-                if (!m_anim.GetBool("Jump")) m_anim.SetBool("Jump", true);
-                Ray ray = new Ray(this.transform.position, Vector3.down);
-                /*落下中は落ちるモーションを取る*/
-                if (m_rb.velocity.y < 0)
-                {
-                    if (m_anim.GetBool("Jump")) m_anim.SetBool("Jump", false);
-                    if (!m_anim.GetBool("IsFall") && !Physics.Raycast(ray, m_fallMotionDis)) m_anim.SetBool("IsFall", true);
-                    else if (m_anim.GetBool("IsFall") && Physics.Raycast(ray, m_fallMotionDis)) m_anim.SetBool("IsLanding", true);
-                }
+                m_spdTemp = 2.5f;
             }
         }
 
         if (m_anim)
         {
+            if (IsGround())
+            {
+                Debug.Log($"接地している{m_hit.collider.name}");
+                m_anim.SetBool("IsInTheAir", false);
+                m_anim.ResetTrigger("JumpAtack");
+                if (Input.GetButtonDown("Jump") && m_canmove)
+                {
+                    Jump();
+                    m_anim.SetTrigger("Jump");
+
+                }
+
+                // if (m_anim.GetBool("IsJumping")) m_anim.SetBool("IsJumping", false);
+                if (m_anim.GetBool("IsFall"))//here
+                {
+                    m_anim.SetBool("IsFall", false);
+                }
+
+
+            }
+            else
+            {
+                Debug.Log($"接地していない");
+                m_anim.SetBool("IsInTheAir", true);
+
+                m_anim.SetFloat("spd", 0f);
+                /*落下中は落ちるモーションを取る*/
+                if (m_rb.velocity.y < 0)
+                {
+                    if (m_anim.GetBool("IsJumping")) m_anim.SetBool("IsJumping", false);
+                    if (!m_anim.GetBool("IsFall")) m_anim.SetBool("IsFall", true);
+                }
+
+            }
+
+
             if (!LockOnController.IsLock)
             {
                 m_anim.SetBool("isLockOn", false);
-                m_anim.SetFloat("spd", m_rb.velocity.magnitude);
+                Vector3 velo = m_rb.velocity;
+                velo.y = 0f;
+                m_anim.SetFloat("spd", velo.magnitude);//ジャンプ中に走ったりするのでy=落下速度は0にしている。
                 m_anim.SetInteger("LockOnMotion", 0);
             }
             else
             {
-                /*シンプルアニメーション*/
                 Debug.Log(PlayerState.m_PlayerDirState.ToString());
                 m_anim.SetBool("isLockOn", true);
                 if (IsSprint) IsSprint = false;
@@ -171,33 +201,51 @@ public class PlayerController : MonoBehaviour
                     switch (PlayerState.m_PlayerDirState)
                     {
                         case PlayerMovingDirection.Neutral:
-                            m_anim.SetInteger("LockOnMotion", 0);
+                            m_anim.SetFloat("PlayerDir", 0f);
                             break;
                         case PlayerMovingDirection.Forward:
-                            m_anim.SetInteger("LockOnMotion", 1);
+                            m_anim.SetFloat("PlayerDir", 1f);
                             break;
                         case PlayerMovingDirection.Right:
-                            m_anim.SetInteger("LockOnMotion", 3);
+                            m_anim.SetFloat("PlayerDir", 3f);
                             break;
                         case PlayerMovingDirection.Left:
-                            m_anim.SetInteger("LockOnMotion", 4);
+                            m_anim.SetFloat("PlayerDir", 4f);
                             break;
                         case PlayerMovingDirection.Back:
-                            m_anim.SetInteger("LockOnMotion", 2);
+                            m_anim.SetFloat("PlayerDir", 2f);
                             break;
                         default:
                             break;
                     }
                 }
             }
+
         }
     }
+
+    public void BeginAtack()
+    {
+        m_atackCol.gameObject.SetActive(true);
+    }
+
+    public void BeginUpperAtack()
+    {
+        m_upperAtackCol.gameObject.SetActive(true);
+    }
+
+    public void EndAtack()
+    {
+        if (m_atackCol.gameObject.activeSelf) m_atackCol.gameObject.SetActive(false);
+        if (m_upperAtackCol.gameObject.activeSelf) m_upperAtackCol.gameObject.SetActive(false);
+    }
+
     public void CanMove()
     {
         m_canmove = true;
         m_turnSpeed = m_turnSpdTemp;
         m_rb.constraints = RigidbodyConstraints.None | RigidbodyConstraints.FreezeRotation;
-        Debug.Log("CanMoveCalled");
+        Debug.Log("CanMoveCalled" + m_canmove);
     }
 
     public void CanNotMove()
@@ -205,13 +253,18 @@ public class PlayerController : MonoBehaviour
         m_canmove = false;
         if (m_anim) m_anim.SetFloat("spd", 0f);
         m_turnSpeed = 0;
-        m_rb.velocity = Vector3.zero;
-        // m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
-        Debug.Log("CanNotMoveCalled");
+        m_rb.velocity = new Vector3(0f, 0f, 0f);
+
+        //m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
+        Debug.Log("CanNotMoveCalled" + m_canmove);
     }
     public void Jump()
     {
-        if (m_anim) m_anim.SetBool("Jump", true);
+        if (m_anim)
+        {
+            m_anim.SetBool("IsJumping", true);
+            m_anim.SetFloat("spd", 0f);
+        }
         m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
     }
     private static RaycastHit m_hit;
