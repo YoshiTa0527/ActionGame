@@ -4,12 +4,13 @@ using UnityEngine;
 
 public class Atack : MonoBehaviour
 {
+    [SerializeField] int m_atackPower = 10;
     private void OnTriggerEnter(Collider other)
     {
-        OnAtack(other);
+        OnAtack(other, AtackType.Normal);
     }
 
-    protected virtual void OnAtack(Collider other)
+    protected virtual void OnAtack(Collider other, AtackType atackType)
     {
         if (other.CompareTag("Enemy"))
         {
@@ -17,9 +18,14 @@ public class Atack : MonoBehaviour
             EnemyController[] enemyControllers = other.gameObject.GetComponents<EnemyController>();
             foreach (var item in enemyControllers)
             {
-                item.Hit(10);
-
+                item.Hit(m_atackPower, atackType);
             }
         }
     }
+
+
+}
+public enum AtackType
+{
+    Normal, Push, KnockOff, LiftUp
 }

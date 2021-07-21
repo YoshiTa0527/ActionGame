@@ -27,6 +27,9 @@ public class PlayerController : MonoBehaviour
     float m_spdTemp;
     float m_turnSpdTemp;
     bool m_canmove = true;
+    bool m_isDodging = false;
+    int m_jumpAtackCounter;
+    Vector3 m_currentDir;
     static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
@@ -39,6 +42,7 @@ public class PlayerController : MonoBehaviour
     /// <summary>攻撃判定に使うコライダー</summary>
     [SerializeField] Collider m_atackCol;
     [SerializeField] Collider m_upperAtackCol;
+    [SerializeField] Collider m_upperKnockOffCol;
     Rigidbody m_rb;
     Animator m_anim;
 
@@ -63,7 +67,7 @@ public class PlayerController : MonoBehaviour
         if (m_rb.velocity.magnitude > m_limitSpeed)
         {
             Debug.Log("はやすぎ");
-            m_rb.velocity = new Vector3(m_rb.velocity.x / m_decelerateSpeed, m_rb.velocity.y / m_decelerateSpeed, m_rb.velocity.z / m_decelerateSpeed);
+            m_rb.velocity = new Vector3(m_rb.velocity.x / m_decelerateSpeed, m_rb.velocity.y, m_rb.velocity.z / m_decelerateSpeed);
         }
 
         switch (PlayerState.m_PlayerStates)
@@ -74,10 +78,15 @@ public class PlayerController : MonoBehaviour
                     if (IsGround())
                     {
                         m_anim.SetTrigger("Atack1");
+                        m_jumpAtackCounter = 0;
                     }
                     else
                     {
-                        m_anim.SetTrigger("JumpAtack");
+                        m_jumpAtackCounter++;
+                        if (m_jumpAtackCounter <= 1)
+                        {
+                            m_anim.SetTrigger("JumpAtack");
+                        }
                     }
                     Debug.Log("AtackButtonPushed");
                 }
@@ -93,6 +102,11 @@ public class PlayerController : MonoBehaviour
                         if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
                         else IsSprint = false;
                     }
+
+                    if (Input.GetButtonDown("Dodge"))
+                    {
+                        m_anim.SetTrigger("Dodge");
+                    }
                 }
                 else
                 {
@@ -107,8 +121,23 @@ public class PlayerController : MonoBehaviour
                 break;
         }
 
+        //if (m_horizontal != 0 && m_virtical != 0 && !m_isDodging)
+        //{
+        //    m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
+        //}
+        //else if (m_horizontal == 0 && m_virtical == 0 && m_isDodging)
+        //{
+        //    m_dir = Vector3.forward * 1;
+        //}
+        //else
+        //{
+        //    m_dir = Vector3.zero;
+        //}
 
-        m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
+        if (!m_isDodging) m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
+       
+
+
         if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
         else if (!LockOnController.IsLock)
         {
@@ -122,22 +151,35 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            m_dir = this.transform.TransformDirection(m_dir);
-            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+            if (!m_isDodging)
+            {
+                m_dir = this.transform.TransformDirection(m_dir);
+                m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
 
-            Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
-            lookAtTarget.y = this.transform.position.y;
-            this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
+                Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
+                lookAtTarget.y = this.transform.position.y;
+                this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
+            }
+            else
+            {
+                Quaternion targetRotation = Quaternion.LookRotation(m_dir);
+                this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
+            }
         }
 
         /*ロックオン中、スプリント中で速度を変える*/
-        if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
+        if (LockOnController.IsLock)
+        {
+            m_spdTemp = m_lockOnMoveSpeed;
+        }
+
         else
         {
             if (IsGround())
             {
                 if (IsSprint) m_spdTemp = m_sprintSpeed;
-                else m_spdTemp = m_defaultMovingSpeed;
+                else if (!IsSprint && !m_isDodging) m_spdTemp = m_defaultMovingSpeed;
+                //else if (m_isDodging) m_spdTemp = m_sprintSpeed;
             }
             else
             {
@@ -155,8 +197,6 @@ public class PlayerController : MonoBehaviour
                 if (Input.GetButtonDown("Jump") && m_canmove)
                 {
                     Jump();
-                    m_anim.SetTrigger("Jump");
-
                 }
 
                 // if (m_anim.GetBool("IsJumping")) m_anim.SetBool("IsJumping", false);
@@ -224,6 +264,31 @@ public class PlayerController : MonoBehaviour
         }
     }
 
+    public void TestDodge()
+    {
+        
+    }
+
+    public void StartDodge()
+    {
+        m_isDodging = true;
+        if (m_dir != Vector3.zero)
+        {
+
+        }
+        else if (m_dir == Vector3.zero)
+        {
+
+        }
+        m_anim.SetBool("IsDodging", m_isDodging);
+    }
+
+    public void EndDodge()
+    {
+        m_isDodging = false;
+        m_anim.SetBool("IsDodging", m_isDodging);
+    }
+
     public void BeginAtack()
     {
         m_atackCol.gameObject.SetActive(true);
@@ -234,10 +299,16 @@ public class PlayerController : MonoBehaviour
         m_upperAtackCol.gameObject.SetActive(true);
     }
 
+    public void BeginKnockOffAtack()
+    {
+        m_upperKnockOffCol.gameObject.SetActive(true);
+    }
+
     public void EndAtack()
     {
         if (m_atackCol.gameObject.activeSelf) m_atackCol.gameObject.SetActive(false);
         if (m_upperAtackCol.gameObject.activeSelf) m_upperAtackCol.gameObject.SetActive(false);
+        if (m_upperKnockOffCol.gameObject.activeSelf) m_upperKnockOffCol.gameObject.SetActive(false);
     }
 
     public void CanMove()

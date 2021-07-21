@@ -11,16 +11,16 @@ public class UpperAtack : Atack
 
     private void OnTriggerEnter(Collider other)
     {
-        OnAtack(other);
+        OnAtack(other, AtackType.LiftUp);
     }
 
-    protected override void OnAtack(Collider other)
+    protected override void OnAtack(Collider other, AtackType atackType)
     {
         Rigidbody[] rbs = other.gameObject.GetComponents<Rigidbody>();
         foreach (var item in rbs)
         {
             item.AddForce(Vector3.up * m_pushPower, ForceMode.Impulse);
         }
-        base.OnAtack(other);
+        base.OnAtack(other, atackType);
     }
 }

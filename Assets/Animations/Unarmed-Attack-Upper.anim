@@ -6,7 +6,7 @@ AnimationClip:
   m_CorrespondingSourceObject: {fileID: 0}
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
-  m_Name: Unarmed-Attack-L2
+  m_Name: Unarmed-Attack-Upper
   serializedVersion: 6
   m_Legacy: 0
   m_Compressed: 0
@@ -30668,7 +30668,7 @@ AnimationClip:
     intParameter: 0
     messageOptions: 0
   - time: 0.3
-    functionName: BeginAtack
+    functionName: BeginUpperAtack
     data: 
     objectReferenceParameter: {fileID: 0}
     floatParameter: 0
