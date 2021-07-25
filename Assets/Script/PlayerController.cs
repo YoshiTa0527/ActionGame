@@ -9,16 +9,6 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
-    /// <summary>プレイヤーの体力</summary>
-    [SerializeField] int m_health = 100;
-    public int Health { get => m_health; }
-    /// <summary>プレイヤーの魔力</summary>
-    [SerializeField] int m_mana = 80;
-    public int Mana { get => m_mana; }
-    /// <summary>プレイヤーのスタミナ</summary>
-    [SerializeField] int m_stamina = 100;
-    public int Stamina { get => m_stamina; }
-
     /// <summary>プレイヤーの動きに関するフィールド</summary>
     float m_horizontal;
     float m_virtical;
@@ -73,6 +63,7 @@ public class PlayerController : MonoBehaviour
 
     private void Update()
     {
+        Debug.Log("velocity.y=" + m_rb.velocity.y);
         /*ジャンプ攻撃がおかしい、グラップルの挙動がおかしい*/
         if (IsGround()) m_jumpAtackCounter = 0;
         Debug.Log($"m_jumpAtackCounter{ m_jumpAtackCounter}");
@@ -81,9 +72,9 @@ public class PlayerController : MonoBehaviour
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
-                if (Input.GetButtonDown("Fire1"))
+                if (Input.GetButtonDown("Fire1") && m_grapple.GetHaveTarget)
                 {
-                    m_anim.SetTrigger("Hook");
+                    if (!m_anim.GetBool("IsHooking")) m_anim.SetBool("IsHooking", true);
                 }
 
                 if (Input.GetButtonDown("Atack"))
@@ -91,7 +82,6 @@ public class PlayerController : MonoBehaviour
                     if (IsGround())
                     {
                         m_anim.SetTrigger("Atack1");
-
                     }
                     else
                     {
@@ -108,6 +98,11 @@ public class PlayerController : MonoBehaviour
                 {
                     m_horizontal = Input.GetAxisRaw("Horizontal");
                     m_virtical = Input.GetAxisRaw("Vertical");
+
+                    if (Input.GetButtonDown("Jump") && IsGround())
+                    {
+                        Jump();
+                    }
 
                     if (Input.GetButtonDown("Sprint"))
                     {
@@ -146,7 +141,7 @@ public class PlayerController : MonoBehaviour
             m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
 
             Quaternion targetRotation = Quaternion.LookRotation(m_dir);
-            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
+            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpdTemp);  // Slerp を使うのがポイント
         }
         else
         {
@@ -169,13 +164,14 @@ public class PlayerController : MonoBehaviour
             {
                 if (IsGround())
                 {
-
+                    m_turnSpdTemp = m_turnSpeed;
                     if (IsSprint) m_spdTemp = m_sprintSpeed;
                     else if (!IsSprint && !m_isDodging) m_spdTemp = m_defaultMovingSpeed;
                 }
                 else
                 {
-                    m_spdTemp = 2.5f;
+                    m_turnSpdTemp *= 0.8f;
+                    m_spdTemp = 5f;
                 }
             }
         }
@@ -206,22 +202,30 @@ public class PlayerController : MonoBehaviour
         if (m_rb.velocity.magnitude > m_limitSpeed)
         {
             m_debugSpdText.color = Color.red;
-            m_spdTemp = m_limitSpeed;
+            m_spdTemp = 0;
             if (m_rb.velocity.y > 0)
             {
-                velo.y = 20f;
+                velo.y = 15;
             }
             else
             {
-                velo.y = -20f;
+                velo.y = m_rb.velocity.y;
             }
         }
-        else
+        else if (m_rb.velocity.magnitude < m_limitSpeed)
         {
             m_debugSpdText.color = Color.blue;
             velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
         }
-
+        else if (m_rb.velocity.y > 10) //無駄かもしれない
+        {
+            m_spdTemp = 0f;
+            m_rb.velocity *= 0.95f;
+            velo.y = 1;
+            Debug.Log("m_rb.velocity.y。速度超過" + m_rb.velocity.y + m_spdTemp);
+        }
+        //velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
+        Debug.Log("m_rb.velocity.y" + m_rb.velocity.y + "  " + m_spdTemp);
         m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
         #endregion
         #region アニメーションに関する処理
@@ -232,11 +236,8 @@ public class PlayerController : MonoBehaviour
                 Debug.Log($"接地している{m_hit.collider.name}");
                 m_anim.SetBool("IsInTheAir", false);
                 m_anim.ResetTrigger("JumpAtack");
-                if (Input.GetButtonDown("Jump") && m_canMove)
-                {
-                    Jump();
-                }
 
+                if (m_anim.GetBool("IsJumping")) m_anim.SetBool("IsJumping", false);
                 if (m_anim.GetBool("IsFall"))//here
                 {
                     m_anim.SetBool("IsFall", false);
@@ -247,6 +248,11 @@ public class PlayerController : MonoBehaviour
                 Debug.Log($"接地していない");
                 m_anim.SetBool("IsInTheAir", true);
                 m_anim.SetFloat("spd", 0f);
+                if (m_rb.velocity.y > 0)
+                {
+                    if (!m_anim.GetBool("IsJumping")) m_anim.SetBool("IsJumping", true);
+                    if (m_anim.GetBool("IsFall")) m_anim.SetBool("IsFall", false);
+                }
                 /*落下中は落ちるモーションを取る*/
                 if (m_rb.velocity.y < 0)
                 {
@@ -350,7 +356,7 @@ public class PlayerController : MonoBehaviour
     public void CanMove()
     {
         m_canMove = true;
-        m_turnSpeed = m_turnSpdTemp;
+        m_turnSpdTemp = m_turnSpeed;
         m_rb.constraints = RigidbodyConstraints.None | RigidbodyConstraints.FreezeRotation;
         Debug.Log("CanMoveCalled" + m_canMove);
     }
@@ -359,7 +365,7 @@ public class PlayerController : MonoBehaviour
     {
         m_canMove = false;
         if (m_anim) m_anim.SetFloat("spd", 0f);
-        m_turnSpeed = 0;
+        m_turnSpdTemp = 0;
         if (!m_isDodging) { m_spdTemp = 0; Debug.Log("spdを0にしました"); }
         if (!IsGround()) m_rb.constraints = RigidbodyConstraints.FreezeAll;
         Debug.Log("CanNotMoveCalled" + m_canMove);

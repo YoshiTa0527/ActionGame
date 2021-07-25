@@ -5,7 +5,7 @@ using UnityEngine;
 public class KnockOffAtack : Atack
 {
     [SerializeField] float m_downForce = 10f;
-    [SerializeField] Vector3 m_addForceDir;
+
 
     private void OnTriggerEnter(Collider other)
     {
@@ -15,7 +15,7 @@ public class KnockOffAtack : Atack
     {
         Rigidbody rb = other.gameObject.GetComponent<Rigidbody>();
         other.GetComponent<EnemyController>()?.DisableConstraints();
-        rb.AddForce(((other.transform.position - this.transform.position) + Vector3.down) * m_downForce, ForceMode.Impulse);
+        rb.AddForce((this.transform.forward + Vector3.down) * m_downForce, ForceMode.Impulse);
         base.OnAtack(other, atackType);
     }
 }

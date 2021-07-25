@@ -113,7 +113,7 @@ public class GrapplingManager : MonoBehaviour
                     DisableConstraints(this.gameObject);
                     float yAbs = Mathf.Abs(m_currentTarget.transform.position.y - this.transform.position.y);
                     if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget
-                        && this.transform.position.y >= m_currentTarget.transform.position.y)
+                        && this.transform.position.y > m_currentTarget.transform.position.y)
                     {
                         Debug.Log("高さほぼ一緒");
                         m_playerRb = this.gameObject.GetComponent<Rigidbody>();
@@ -128,7 +128,7 @@ public class GrapplingManager : MonoBehaviour
             {
                 DisableConstraints(this.gameObject);
                 float yAbs = Mathf.Abs(m_currentTarget.transform.position.y - this.transform.position.y);
-                if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget && CalcValue(yAbs, 1f)
+                if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget    　// && CalcValue(yAbs, 1f)
                     && this.transform.position.y > m_currentTarget.transform.position.y)
                 {
                     Debug.Log("高さほぼ一緒");

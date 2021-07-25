@@ -19,14 +19,16 @@ public class NewGrapplingManager : MonoBehaviour
     /// <summary>ターゲットを減速させるときにかける数</summary>
     [SerializeField] float m_decelerateSpeed = 0.5f;
     [SerializeField] float m_pullTime = 0.2f;
-
+    /// <summary>直前のターゲット</summary>
+    GameObject m_latestTarget;
     [SerializeField] bool isEnable;
     bool m_haveTarget;
+    public bool GetHaveTarget { get => m_haveTarget; }
     bool m_isDrawingLine;
 
     [SerializeField] InOutTracking m_iot;
 
-    GameObject m_currentTarget;
+    GameObject m_currentTarget = null;
 
     Rigidbody m_playerRb;
     Rigidbody m_targetRb;
@@ -36,12 +38,15 @@ public class NewGrapplingManager : MonoBehaviour
     float m_timer;
 
     public static bool IsHooked { get; set; }
+    Animator m_anim;
 
     private void Start()
     {
         m_lineRend = GetComponent<LineRenderer>();
         m_joint = GetComponent<ConfigurableJoint>();
         m_lockOn = FindObjectOfType<LockOnController>();
+        m_playerRb = this.gameObject.GetComponent<Rigidbody>();
+        m_anim = GetComponent<Animator>();
         if (!m_sourcePos) m_sourcePos = this.transform;
         HideLine();
     }
@@ -60,7 +65,9 @@ public class NewGrapplingManager : MonoBehaviour
             m_haveTarget = false;
         }
 
-        Target();
+
+
+
 
         if (IsHooked)
         {
@@ -68,10 +75,8 @@ public class NewGrapplingManager : MonoBehaviour
             if (m_timer > m_pullTime)
             {
                 m_timer = 0;
-                PullTarget(m_joint, m_currentTarget);
+                // PullTarget(m_joint, m_currentTarget);
             }
-
-            if (m_isDrawingLine) DrawLine(m_sourcePos.position, m_currentTarget.transform.position);
 
             if (m_currentTarget.tag == "Enemy")
             {
@@ -102,25 +107,56 @@ public class NewGrapplingManager : MonoBehaviour
                         LoseHook(m_joint);
                     }
                 }
-
             }
             else if (m_currentTarget.tag == "GrapplePoint")
             {
                 DisableConstraints(this.gameObject);
                 float yAbs = Mathf.Abs(m_currentTarget.transform.position.y - this.transform.position.y);
-                if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget && CalcValue(yAbs, 1f)
-                    && this.transform.position.y > m_currentTarget.transform.position.y)
+                //if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget //&& CalcValue(yAbs, 5f)
+                //    && this.transform.position.y > m_currentTarget.transform.position.y)
+                //{
+                //    Debug.Log("Grapple::十分近づいた");
+                //    m_playerRb = this.gameObject.GetComponent<Rigidbody>();
+                //    //m_playerRb.velocity = Vector3.zero;
+                //    //m_playerRb.AddForce((m_currentTarget.transform.position - this.transform.position + new Vector3(0, 0.5f, 0)) * 4.5f, ForceMode.Impulse);
+                //    Debug.Log("Grapple::アドフォース！");
+                //    LoseHook(m_joint);
+                //}
+
+                if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget)
                 {
-                    Debug.Log("高さほぼ一緒");
-                    m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-                    m_playerRb.velocity = Vector3.zero;
-                    m_playerRb.AddForce(Vector3.up * 5f, ForceMode.Impulse);
-                    LoseHook(m_joint);
+                    Debug.Log("Grapple::近づいた。yAbs=" + yAbs);
+                    if (this.transform.position.y < m_currentTarget.transform.position.y)
+                    {
+                        LoseHook(m_joint);
+                        //m_playerRb.AddForce((this.transform.forward + new Vector3(0, 1, 0) / 5) * 10, ForceMode.Impulse);
+
+                        Debug.Log("Grapple::下にある");
+                    }
                 }
-
             }
-        }
 
+            if (m_isDrawingLine) DrawLine(m_sourcePos.position, m_currentTarget.transform.position);
+        }
+        else
+        {
+            //if (m_latestTarget)
+            //{
+            //    if (Vector3.Distance(this.transform.position, m_latestTarget.transform.position) <= m_disToDecelerateTarget)
+            //    {
+            //        if (this.transform.position.y > m_latestTarget.transform.position.y + 5f)
+            //        {
+            //            m_playerRb = this.gameObject.GetComponent<Rigidbody>();
+            //            m_playerRb.velocity = this.transform.forward * 100;
+            //            m_playerRb.AddForce(this.transform.forward * 100, ForceMode.Impulse);
+            //            Debug.Log("Grapple::アドフォース！");
+            //        }
+
+            //    }
+            //}
+
+            Target();
+        }
     }
 
     private void Target()
@@ -144,7 +180,9 @@ public class NewGrapplingManager : MonoBehaviour
         if (!IsHooked)
         {
             IsHooked = true;
-            this.transform.LookAt(m_currentTarget.transform.position);
+            Vector3 lookAtPos = m_currentTarget.transform.position;
+            lookAtPos.y = this.transform.position.y;
+            this.transform.LookAt(lookAtPos);
             Hook(m_joint, m_currentTarget);
         }
 
@@ -180,7 +218,6 @@ public class NewGrapplingManager : MonoBehaviour
             joint.xMotion = ConfigurableJointMotion.Limited;
             joint.yMotion = ConfigurableJointMotion.Limited;
             joint.zMotion = ConfigurableJointMotion.Limited;
-
         }
         else
         {
@@ -200,7 +237,10 @@ public class NewGrapplingManager : MonoBehaviour
         joint.yMotion = ConfigurableJointMotion.Free;
         joint.zMotion = ConfigurableJointMotion.Free;
 
+        m_latestTarget = m_currentTarget;
         IsHooked = false;
+        if (m_anim.GetBool("IsHooking")) m_anim.SetBool("IsHooking", false);
+
     }
 
     void DrawLineOnAnimation()
@@ -232,7 +272,6 @@ public class NewGrapplingManager : MonoBehaviour
 
     void HideLine()
     {
-
         DrawLine(Vector3.zero, Vector3.zero);
         m_isDrawingLine = false;
     }

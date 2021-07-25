@@ -12,7 +12,7 @@ public class InOutTracking : MonoBehaviour
     [SerializeField] Image icon;
     [SerializeField] GameObject m_grapplingPointParent = null;
     /// <summary>この距離内にあるオブジェクトから一つ選ぶ</summary>
-    [SerializeField] float m_distance = 10f;
+    [SerializeField] float m_maxDistance = 10f;
     GameObject m_nextTarget;
     TargetController m_target;
     public TargetController GetGrapplingTarget { get { return m_target; } }
@@ -74,7 +74,10 @@ public class InOutTracking : MonoBehaviour
     /// <returns></return>
     TargetController[] DetectNearTargets(List<TargetController> targetList)
     {
-        TargetController[] nearlestTargets = targetList.Where(t => Vector3.Distance(this.transform.position, t.transform.position) < m_distance).ToArray();
+        TargetController[] nearlestTargets = targetList.Where(t =>
+                                                         Vector3.Distance(this.transform.position, t.transform.position) < m_maxDistance &&
+                                                         t.transform.position.y > this.transform.position.y)
+                                                          .ToArray();
 
         return nearlestTargets;
     }
@@ -99,7 +102,7 @@ public class InOutTracking : MonoBehaviour
             return null;
         }
 
-        /*一定距離内のターゲットの中で、画面に映っているもの*/
+        /*一定距離内のターゲットの中で、画面に映っており、プレイヤーより上にあるもの*/
         var nearAndVisibleTarget = nearTergets.Where(t => t.IsHookable == true);
 
         /*一定距離内のターゲットの中で、画面に映っているものがあるときは、画面の中央に近いものをターゲットとする*/

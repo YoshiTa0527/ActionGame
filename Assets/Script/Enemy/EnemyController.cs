@@ -60,6 +60,7 @@ public class EnemyController : MonoBehaviour
                 if (IsGround())
                 {
                     Debug.Log("Kno");
+                    m_rb.useGravity = true;
                     Instantiate(m_explosionPrefab, this.transform.position, Quaternion.identity).GetComponent<ExplosionForce>().AddExplosionForce();
                     Idle();
                 }
