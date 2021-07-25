@@ -58,6 +58,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] Collider m_hitCol;
     Rigidbody m_rb;
     Animator m_anim;
+    NewGrapplingManager m_grapple;
 
     private void Start()
     {
@@ -67,6 +68,7 @@ public class PlayerController : MonoBehaviour
         m_anim = GetComponent<Animator>();
         m_spdTemp = m_defaultMovingSpeed;
         m_turnSpdTemp = m_turnSpeed;
+        m_grapple = GetComponent<NewGrapplingManager>();
     }
 
     private void Update()
@@ -79,6 +81,11 @@ public class PlayerController : MonoBehaviour
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
+                if (Input.GetButtonDown("Fire1"))
+                {
+                    m_anim.SetTrigger("Hook");
+                }
+
                 if (Input.GetButtonDown("Atack"))
                 {
                     if (IsGround())
