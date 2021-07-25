@@ -9,6 +9,16 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Rigidbody))]
 public class PlayerController : MonoBehaviour
 {
+    /// <summary>プレイヤーの体力</summary>
+    [SerializeField] int m_health = 100;
+    public int Health { get => m_health; }
+    /// <summary>プレイヤーの魔力</summary>
+    [SerializeField] int m_mana = 80;
+    public int Mana { get => m_mana; }
+    /// <summary>プレイヤーのスタミナ</summary>
+    [SerializeField] int m_stamina = 100;
+    public int Stamina { get => m_stamina; }
+
     /// <summary>プレイヤーの動きに関するフィールド</summary>
     float m_horizontal;
     float m_virtical;
@@ -16,6 +26,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_defaultMovingSpeed = 5f;
     [SerializeField] float m_sprintSpeed = 8f;
     [SerializeField] float m_lockOnMoveSpeed = 3f;
+    [SerializeField] float m_dodgeSpeed = 8f;
     [SerializeField] float m_turnSpeed = 5f;
     [SerializeField] float m_jumpPower = 5f;
     [SerializeField] float m_limitSpeed = 20f;
@@ -23,13 +34,13 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_landingMotionDis = 3f;
     [SerializeField] float m_fallMotionDis = 1f;
     [SerializeField] float m_movingPowerInTheAir = 2f;
-    float m_highestPos;
     float m_spdTemp;
     float m_turnSpdTemp;
-    bool m_canmove = true;
+    [SerializeField] bool m_canMove = true;
     bool m_isDodging = false;
     int m_jumpAtackCounter;
-    Vector3 m_currentDir;
+    [SerializeField] Text m_debugSpdText;
+    float m_maxSpeed;
     static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
@@ -43,6 +54,8 @@ public class PlayerController : MonoBehaviour
     [SerializeField] Collider m_atackCol;
     [SerializeField] Collider m_upperAtackCol;
     [SerializeField] Collider m_upperKnockOffCol;
+    /// <summary>被弾判定に用いるコライダー</summary>
+    [SerializeField] Collider m_hitCol;
     Rigidbody m_rb;
     Animator m_anim;
 
@@ -56,20 +69,13 @@ public class PlayerController : MonoBehaviour
         m_turnSpdTemp = m_turnSpeed;
     }
 
-    private void FixedUpdate()
-    {
-        Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
-        velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
-        m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
-    }
     private void Update()
     {
-        if (m_rb.velocity.magnitude > m_limitSpeed)
-        {
-            Debug.Log("はやすぎ");
-            m_rb.velocity = new Vector3(m_rb.velocity.x / m_decelerateSpeed, m_rb.velocity.y, m_rb.velocity.z / m_decelerateSpeed);
-        }
+        /*ジャンプ攻撃がおかしい、グラップルの挙動がおかしい*/
+        if (IsGround()) m_jumpAtackCounter = 0;
+        Debug.Log($"m_jumpAtackCounter{ m_jumpAtackCounter}");
 
+        #region 入力を受け取る処理
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
@@ -78,7 +84,7 @@ public class PlayerController : MonoBehaviour
                     if (IsGround())
                     {
                         m_anim.SetTrigger("Atack1");
-                        m_jumpAtackCounter = 0;
+
                     }
                     else
                     {
@@ -88,11 +94,11 @@ public class PlayerController : MonoBehaviour
                             m_anim.SetTrigger("JumpAtack");
                         }
                     }
-                    Debug.Log("AtackButtonPushed");
-                }
-                if (m_canmove)//here
-                {
 
+                }
+
+                if (m_canMove)//here
+                {
                     m_horizontal = Input.GetAxisRaw("Horizontal");
                     m_virtical = Input.GetAxisRaw("Vertical");
 
@@ -105,14 +111,14 @@ public class PlayerController : MonoBehaviour
 
                     if (Input.GetButtonDown("Dodge"))
                     {
+                        if (m_dir == Vector3.zero) return;
                         m_anim.SetTrigger("Dodge");
                     }
                 }
-                else
+                else if (!m_canMove && !m_isDodging)
                 {
                     m_horizontal = 0f;
                     m_virtical = 0f;
-                    m_rb.velocity = Vector3.zero;
                 }
                 break;
             case PlayerStates.OpenUi:
@@ -120,23 +126,9 @@ public class PlayerController : MonoBehaviour
             default:
                 break;
         }
-
-        //if (m_horizontal != 0 && m_virtical != 0 && !m_isDodging)
-        //{
-        //    m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
-        //}
-        //else if (m_horizontal == 0 && m_virtical == 0 && m_isDodging)
-        //{
-        //    m_dir = Vector3.forward * 1;
-        //}
-        //else
-        //{
-        //    m_dir = Vector3.zero;
-        //}
-
-        if (!m_isDodging) m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
-       
-
+        #endregion
+        #region ベクトルに関する処理
+        m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
 
         if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
         else if (!LockOnController.IsLock)
@@ -151,42 +143,81 @@ public class PlayerController : MonoBehaviour
         }
         else
         {
-            if (!m_isDodging)
-            {
-                m_dir = this.transform.TransformDirection(m_dir);
-                m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+            m_dir = this.transform.TransformDirection(m_dir);
+            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
 
-                Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
-                lookAtTarget.y = this.transform.position.y;
-                this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
+            Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
+            lookAtTarget.y = this.transform.position.y;
+            this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
+        }
+        #endregion
+        #region　速さに関する処理
+        if (m_canMove)
+        {
+            if (LockOnController.IsLock)
+            {
+                if (!m_isDodging) m_spdTemp = m_lockOnMoveSpeed;
             }
             else
             {
-                Quaternion targetRotation = Quaternion.LookRotation(m_dir);
-                this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
+                if (IsGround())
+                {
+
+                    if (IsSprint) m_spdTemp = m_sprintSpeed;
+                    else if (!IsSprint && !m_isDodging) m_spdTemp = m_defaultMovingSpeed;
+                }
+                else
+                {
+                    m_spdTemp = 2.5f;
+                }
+            }
+        }
+        else if (!m_canMove && m_isDodging)
+        {
+            if (!LockOnController.IsLock)
+            {
+                m_spdTemp = m_dodgeSpeed;
+            }
+            else
+            {
+                m_spdTemp = m_dodgeSpeed * 0.8f;
             }
         }
 
-        /*ロックオン中、スプリント中で速度を変える*/
-        if (LockOnController.IsLock)
+        Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
+
+
+        if (m_rb.velocity.magnitude > m_maxSpeed)
         {
-            m_spdTemp = m_lockOnMoveSpeed;
+            m_maxSpeed = m_rb.velocity.magnitude;
         }
 
+
+        m_debugSpdText.text = $"Velo:{m_rb.velocity.magnitude.ToString("F1")}m/s\nMaxSpeed:{m_maxSpeed}";
+
+        /*グラップル中あまりにも速度が早いため、y方向の速度も制限する*/
+        if (m_rb.velocity.magnitude > m_limitSpeed)
+        {
+            m_debugSpdText.color = Color.red;
+            m_spdTemp = m_limitSpeed;
+            if (m_rb.velocity.y > 0)
+            {
+                velo.y = 20f;
+            }
+            else
+            {
+                velo.y = -20f;
+            }
+        }
         else
         {
-            if (IsGround())
-            {
-                if (IsSprint) m_spdTemp = m_sprintSpeed;
-                else if (!IsSprint && !m_isDodging) m_spdTemp = m_defaultMovingSpeed;
-                //else if (m_isDodging) m_spdTemp = m_sprintSpeed;
-            }
-            else
-            {
-                m_spdTemp = 2.5f;
-            }
+            m_debugSpdText.color = Color.blue;
+            velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
         }
 
+        m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
+        #endregion
+        #region アニメーションに関する処理
         if (m_anim)
         {
             if (IsGround())
@@ -194,24 +225,20 @@ public class PlayerController : MonoBehaviour
                 Debug.Log($"接地している{m_hit.collider.name}");
                 m_anim.SetBool("IsInTheAir", false);
                 m_anim.ResetTrigger("JumpAtack");
-                if (Input.GetButtonDown("Jump") && m_canmove)
+                if (Input.GetButtonDown("Jump") && m_canMove)
                 {
                     Jump();
                 }
 
-                // if (m_anim.GetBool("IsJumping")) m_anim.SetBool("IsJumping", false);
                 if (m_anim.GetBool("IsFall"))//here
                 {
                     m_anim.SetBool("IsFall", false);
                 }
-
-
             }
             else
             {
                 Debug.Log($"接地していない");
                 m_anim.SetBool("IsInTheAir", true);
-
                 m_anim.SetFloat("spd", 0f);
                 /*落下中は落ちるモーションを取る*/
                 if (m_rb.velocity.y < 0)
@@ -219,16 +246,15 @@ public class PlayerController : MonoBehaviour
                     if (m_anim.GetBool("IsJumping")) m_anim.SetBool("IsJumping", false);
                     if (!m_anim.GetBool("IsFall")) m_anim.SetBool("IsFall", true);
                 }
-
             }
 
 
             if (!LockOnController.IsLock)
             {
                 m_anim.SetBool("isLockOn", false);
-                Vector3 velo = m_rb.velocity;
-                velo.y = 0f;
-                m_anim.SetFloat("spd", velo.magnitude);//ジャンプ中に走ったりするのでy=落下速度は0にしている。
+                Vector3 veloLockOn = m_rb.velocity;
+                veloLockOn.y = 0f;
+                m_anim.SetFloat("spd", veloLockOn.magnitude);//ジャンプ中に走ったりするのでy=落下速度は0にしている。
                 m_anim.SetInteger("LockOnMotion", 0);
             }
             else
@@ -262,31 +288,34 @@ public class PlayerController : MonoBehaviour
             }
 
         }
+        #endregion
     }
 
-    public void TestDodge()
+    public void TestButton()
     {
-        
+        m_rb.constraints = RigidbodyConstraints.FreezePositionY;
+        m_rb.constraints = RigidbodyConstraints.FreezeAll;
+    }
+
+    public void Hit()
+    {
+
     }
 
     public void StartDodge()
     {
         m_isDodging = true;
-        if (m_dir != Vector3.zero)
-        {
-
-        }
-        else if (m_dir == Vector3.zero)
-        {
-
-        }
+        m_canMove = false;
         m_anim.SetBool("IsDodging", m_isDodging);
+        Debug.Log($"m_isDodging:{m_isDodging}::m_canmove:{m_canMove}");
     }
 
     public void EndDodge()
     {
         m_isDodging = false;
+        m_canMove = true;
         m_anim.SetBool("IsDodging", m_isDodging);
+        Debug.Log($"m_isDodging:{m_isDodging}::m_canmove:{m_canMove}");
     }
 
     public void BeginAtack()
@@ -313,21 +342,20 @@ public class PlayerController : MonoBehaviour
 
     public void CanMove()
     {
-        m_canmove = true;
+        m_canMove = true;
         m_turnSpeed = m_turnSpdTemp;
         m_rb.constraints = RigidbodyConstraints.None | RigidbodyConstraints.FreezeRotation;
-        Debug.Log("CanMoveCalled" + m_canmove);
+        Debug.Log("CanMoveCalled" + m_canMove);
     }
 
     public void CanNotMove()
     {
-        m_canmove = false;
+        m_canMove = false;
         if (m_anim) m_anim.SetFloat("spd", 0f);
         m_turnSpeed = 0;
-        m_rb.velocity = new Vector3(0f, 0f, 0f);
-
-        //m_rb.constraints = RigidbodyConstraints.FreezePositionX | RigidbodyConstraints.FreezePositionZ;
-        Debug.Log("CanNotMoveCalled" + m_canmove);
+        if (!m_isDodging) { m_spdTemp = 0; Debug.Log("spdを0にしました"); }
+        if (!IsGround()) m_rb.constraints = RigidbodyConstraints.FreezeAll;
+        Debug.Log("CanNotMoveCalled" + m_canMove);
     }
     public void Jump()
     {

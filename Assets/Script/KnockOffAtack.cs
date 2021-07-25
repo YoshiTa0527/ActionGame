@@ -15,7 +15,7 @@ public class KnockOffAtack : Atack
     {
         Rigidbody rb = other.gameObject.GetComponent<Rigidbody>();
         other.GetComponent<EnemyController>()?.DisableConstraints();
-        rb.AddForce(((this.transform.position - other.transform.position) / 2 + Vector3.down) * m_downForce, ForceMode.Impulse);
+        rb.AddForce(((other.transform.position - this.transform.position) + Vector3.down) * m_downForce, ForceMode.Impulse);
         base.OnAtack(other, atackType);
     }
 }

@@ -137,12 +137,26 @@ public class GrapplingManager : MonoBehaviour
                     m_playerRb.AddForce(Vector3.up * 5f, ForceMode.Impulse);
                     LoseHook(m_joint);
                 }
+
+                //float y = m_currentTarget.transform.position.y - this.transform.position.y;
+                //if (y > 0)//ポイントがプレイヤーより上にある場合
+                //{
+                //    if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget)
+                //    {
+                //        ターゲットの上方へ飛ぶ
+                //        var targetUp = (m_currentTarget.transform.position - this.transform.position) + Vector3.up;
+                //        m_playerRb = this.gameObject.GetComponent<Rigidbody>();
+                //        m_playerRb.AddForce(targetUp * 5f, ForceMode.Impulse);
+                //        LoseHook(m_joint);
+                //    }
+                //}
+                //else if (y < 0)//ポイントがプレイヤーより下にある場合
+                //{
+
+                //}
             }
         }
-        else
-        {
-            DisableConstraints(this.gameObject);
-        }
+
     }
 
     /// <summary>
@@ -187,6 +201,7 @@ public class GrapplingManager : MonoBehaviour
     {
         Debug.Log("GrapplingManager::LoseHook()");
         HideLine();
+        DisableConstraints(this.gameObject);
         m_stateText.text = "LoseHook";
 
         joint.connectedBody = null;

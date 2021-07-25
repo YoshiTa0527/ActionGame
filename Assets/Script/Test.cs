@@ -9,6 +9,10 @@ using UnityEngine.UI;
 [RequireComponent(typeof(Rigidbody))]
 public class Test : MonoBehaviour
 {
+    [SerializeField] GameObject m_target;
+    [SerializeField] Text m_debugText;
+    [SerializeField] float m_distance = 5f;
+    [SerializeField] float m_addforcePower = 10f;
     /// <summary>プレイヤーの動きに関するフィールド</summary>
     float m_horizontal;
     float m_virtical;
@@ -26,6 +30,7 @@ public class Test : MonoBehaviour
     float m_spdTemp;
     float m_turnSpdTemp;
     bool m_canmove = true;
+    bool m_isDodge = false;
     static public bool IsSprint { get; set; }
     /// <summary>接地判定に関するフィールド</summary>
     [SerializeField] float m_sphereRadius = 1f;
@@ -36,27 +41,31 @@ public class Test : MonoBehaviour
     /// <summary>ロックオンに関するフィールド</summary>
     LockOnController m_loc;
     Rigidbody m_rb;
+    float m_timer;
 
     SimpleAnimation m_simpleAnim;
     bool m_isInTheAir;
 
+    public void TestButton()
+    {
+        if (m_rb)
+        {
+            m_rb.constraints = RigidbodyConstraints.FreezeAll;
+            Debug.Log("RigidBodyConstraints");
+        }
+    }
+
     private void Start()
     {
         m_rb = GetComponent<Rigidbody>();
+
         m_loc = FindObjectOfType<LockOnController>();
         m_colider = GetComponent<CapsuleCollider>();
         m_simpleAnim = GetComponent<SimpleAnimation>();
         m_spdTemp = m_defaultMovingSpeed;
         m_turnSpdTemp = m_turnSpeed;
     }
-
-    private void FixedUpdate()
-    {
-        Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
-        if (!IsGround()) velo = m_dir.normalized * m_spdTemp / 2;
-        velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
-        m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
-    }
+    bool m_isNearTarget = false;
     private void Update()
     {
         if (m_rb.velocity.magnitude > m_limitSpeed)
@@ -65,96 +74,86 @@ public class Test : MonoBehaviour
             m_rb.velocity = new Vector3(m_rb.velocity.x / m_decelerateSpeed, m_rb.velocity.y / m_decelerateSpeed, m_rb.velocity.z / m_decelerateSpeed);
         }
 
-        switch (PlayerState.m_PlayerStates)
+        if (Vector3.Distance(this.transform.position, m_target.transform.position) < m_distance && !m_isNearTarget)
         {
-            case PlayerStates.InGame:
-                if (m_canmove)//here
-                {
-                    m_horizontal = Input.GetAxisRaw("Horizontal");
-                    m_virtical = Input.GetAxisRaw("Vertical");
-                    if (Input.GetButtonDown("Sprint"))
-                    {
-                        Debug.Log("SprintButtonPushed");
-                        if (!IsSprint)
-                        {// m_rb.velocity = Vector3.zero;
-                            IsSprint = true;
-                        }
-                        else IsSprint = false;
-                    }
-                }
-                break;
-            case PlayerStates.OpenUi:
-                break;
-            default:
-                break;
+            m_debugText.color = Color.red;
+            m_debugText.text = Vector3.Distance(this.transform.position, m_target.transform.position).ToString("F1") + "m";
+            m_rb.AddForce(((m_target.transform.position - this.transform.position) + Vector3.up * 1.2f) * m_addforcePower, ForceMode.Impulse);
+            m_isNearTarget = true;
+            Debug.Log("near");
+        }
+        else
+        {
+            m_debugText.color = Color.blue;
+            m_debugText.text = Vector3.Distance(this.transform.position, m_target.transform.position).ToString("F1") + "m";
+            m_isNearTarget = false;
+            Debug.Log("far");
         }
 
+        if (m_canmove)//here
+        {
+            m_horizontal = Input.GetAxisRaw("Horizontal");
+            m_virtical = Input.GetAxisRaw("Vertical");
+            if (Input.GetButtonDown("Sprint"))
+            {
+                Debug.Log("SprintButtonPushed");
+                if (!IsSprint)
+                {// m_rb.velocity = Vector3.zero;
+                    IsSprint = true;
+                }
+                else IsSprint = false;
+            }
+            if (Input.GetButtonDown("Dodge"))
+            {
+                if (!m_isDodge)
+                {
+                    m_isDodge = true;
+                    Debug.Log("m_dodge:" + m_isDodge);
+                    m_canmove = false;
+                }
+            }
+        }
+        else if (!m_canmove && !m_isDodge)
+        {
+            m_rb.velocity = Vector3.zero;
+        }
+        else if (!m_canmove && m_isDodge)
+        {
+            Vector3 dodgeVelo = m_dir.normalized * 10f;
+            dodgeVelo.y = m_rb.velocity.y;
+            m_rb.velocity = dodgeVelo;
+        }
+
+        if (m_isDodge)
+        {
+            m_timer += Time.deltaTime;
+            if (m_timer > 2f)
+            {
+                m_timer = 0;
+                m_isDodge = false;
+                Debug.Log("m_dodge:" + m_isDodge);
+                m_canmove = true;
+            }
+        }
 
         m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
         if (m_dir == Vector3.zero) m_rb.velocity = new Vector3(0f, m_rb.velocity.y, 0f);
-        else if (!LockOnController.IsLock)
-        {
-            /*ロックオン状態でなければ普通に動く*/
 
-            m_dir = Camera.main.transform.TransformDirection(m_dir);
-            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+        m_dir = Camera.main.transform.TransformDirection(m_dir);
+        m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
 
-            Quaternion targetRotation = Quaternion.LookRotation(m_dir);
-            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
-        }
-        else
-        {
-            m_dir = this.transform.TransformDirection(m_dir);
-            m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
+        Quaternion targetRotation = Quaternion.LookRotation(m_dir);
+        this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpeed);  // Slerp を使うのがポイント
 
-            Vector3 lookAtTarget = m_loc.GetTarget.transform.position;
-            lookAtTarget.y = this.transform.position.y;
-            this.transform.LookAt(lookAtTarget);/*敵を見ながら動く*/
-        }
 
-        /*ロックオン中、スプリント中で速度を変える*/
-        if (LockOnController.IsLock) m_spdTemp = m_lockOnMoveSpeed;
-        else
-        {
-            if (IsSprint) m_spdTemp = m_sprintSpeed;
-            else m_spdTemp = m_defaultMovingSpeed;
-        }
+        Vector3 velo = m_dir.normalized * m_spdTemp; // 入力した方向に移動する
+        if (!IsGround()) velo = m_dir.normalized * m_spdTemp / 2;
+        velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
+        m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
 
-        if (IsGround())
-        {
-            Debug.Log($"接地している:{m_isInTheAir}");
-            m_isInTheAir = false;
 
-            if (Input.GetButtonDown("Jump"))
-            {
-                Jump();
-            }
-        }
-        else
-        {
-            Debug.Log($"接地していない");
-            m_isInTheAir = true;
-        }
-
-        /*simpleAnimationに関する処理*/
-        if (m_simpleAnim)
-        {
-            if (!IsGround())
-            {
-                if (m_rb.velocity.y > 0) m_simpleAnim.CrossFade("JumpStart", 0.1f);
-                else if (m_rb.velocity.y < 0) m_simpleAnim.CrossFade("JumpMidAir", 0.1f);
-            }
-            else
-            {
-                if (m_horizontal != 0 || m_virtical != 0)
-                {
-                    if (IsSprint) m_simpleAnim.CrossFade("Sprint", 0.1f);
-                    else m_simpleAnim.CrossFade("Run", 0.1f);
-                }
-                else m_simpleAnim.CrossFade("Default", 0.1f);
-            }
-        }
     }
+
     public void CanMove()
     {
         m_canmove = true;
