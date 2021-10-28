@@ -8,8 +8,8 @@ using UnityEditor;
 public class InOutTracking : MonoBehaviour
 {
 
-    [SerializeField] Transform testTarget;
-    [SerializeField] Image icon;
+    [SerializeField] Transform m_testTarget;
+    [SerializeField] Image m_icon;
     [SerializeField] GameObject m_grapplingPointParent = null;
     /// <summary>この距離内にあるオブジェクトから一つ選ぶ</summary>
     [SerializeField] float m_maxDistance = 10f;
@@ -24,13 +24,16 @@ public class InOutTracking : MonoBehaviour
     void Start()
     {
         // UIがはみ出ないようにする
-        m_canvasRect = ((RectTransform)icon.canvas.transform).rect;
-        m_canvasRect.Set(
-            m_canvasRect.x + icon.rectTransform.rect.width * 0.5f,
-            m_canvasRect.y + icon.rectTransform.rect.height * 0.5f,
-            m_canvasRect.width - icon.rectTransform.rect.width,
-            m_canvasRect.height - icon.rectTransform.rect.height
-        );
+        if (m_icon)
+        {
+            m_canvasRect = ((RectTransform)m_icon.canvas.transform).rect;
+            m_canvasRect.Set(
+                m_canvasRect.x + m_icon.rectTransform.rect.width * 0.5f,
+                m_canvasRect.y + m_icon.rectTransform.rect.height * 0.5f,
+                m_canvasRect.width - m_icon.rectTransform.rect.width,
+                m_canvasRect.height - m_icon.rectTransform.rect.height
+            );
+        }
     }
     /*ターゲットの取得方法
      * 一定の距離以内に制限する→一定時間沖にスフィアキャストをして取得する？→フィールド上の
@@ -48,23 +51,23 @@ public class InOutTracking : MonoBehaviour
         if (m_target)
         {
             Debug.Log($"target:{m_target.gameObject.name}");
-            icon.enabled = true;
+            m_icon.enabled = true;
             var viewport = Camera.main.WorldToViewportPoint(m_target.transform.position);
             Debug.Log($"viewport:{viewport}");
-            if (m_target.IsHookable)
+            if (m_target.IsVisible)
             {
-                icon.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
+                m_icon.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
             }
-            else if (!m_target.IsHookable)
+            else if (!m_target.IsVisible)
             {
                 // 画面内で対象を追跡
                 viewport.x = Mathf.Clamp01(viewport.x);
                 viewport.y = Mathf.Clamp01(viewport.y);
-                Debug.Log($"x::{viewport.x}y;;{viewport.x}");
-                icon.rectTransform.anchoredPosition = Rect.NormalizedToPoint(m_canvasRect, viewport);
+                Debug.Log($"画面外：x::{viewport.x}y;;{viewport.x}");
+                m_icon.rectTransform.anchoredPosition = Rect.NormalizedToPoint(m_canvasRect, viewport);
             }
         }
-        else icon.enabled = false;
+        else m_icon.enabled = false;
     }
 
     /// <summary>
@@ -78,16 +81,13 @@ public class InOutTracking : MonoBehaviour
                                                          Vector3.Distance(this.transform.position, t.transform.position) < m_maxDistance &&
                                                          t.transform.position.y > this.transform.position.y)
                                                           .ToArray();
-
         return nearlestTargets;
     }
 
     /// <summary>
     /// 条件に当てはまるターゲットを探す
-    /// 
     /// カメラより前方。
     /// 画面の中心に近いもの。
-    /// カメラが見ているベクトルと、全てのオブジェクトとカメラのトランスフォームのベクトルを取って外積をとる
     /// </summary>
     /// <param name="targets"></param>
     /// <returns></returns>
@@ -103,7 +103,7 @@ public class InOutTracking : MonoBehaviour
         }
 
         /*一定距離内のターゲットの中で、画面に映っており、プレイヤーより上にあるもの*/
-        var nearAndVisibleTarget = nearTergets.Where(t => t.IsHookable == true);
+        var nearAndVisibleTarget = nearTergets.Where(t => t.IsVisible == true);
 
         /*一定距離内のターゲットの中で、画面に映っているものがあるときは、画面の中央に近いものをターゲットとする*/
         if (nearAndVisibleTarget.Count() > 0)
@@ -130,7 +130,5 @@ public class InOutTracking : MonoBehaviour
         {
             return DetectNearTargets(targets).FirstOrDefault();
         }
-
-
     }
 }

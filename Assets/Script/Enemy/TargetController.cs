@@ -18,12 +18,12 @@ public class TargetController : MonoBehaviour
     /// オブジェクトがロックオンされているかどうか返す
     /// </summary>
 
-    public bool IsTarget { get => m_isTarget; set { m_isTarget = value; } }
+    public bool IsTargeted { get => m_isTarget; set { m_isTarget = value; } }
 
     /// <summary>
     /// オブジェクトが画面内にあるかどうかを返す
     /// </summary>
-    public bool IsHookable
+    public bool IsVisible
     {
         get { return m_isTargetable; }
     }

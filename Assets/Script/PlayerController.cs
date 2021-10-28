@@ -13,6 +13,7 @@ public class PlayerController : MonoBehaviour
     float m_horizontal;
     float m_virtical;
     Vector3 m_dir;
+    [SerializeField] AudioManager m_audioManager;
     [SerializeField] float m_defaultMovingSpeed = 5f;
     [SerializeField] float m_sprintSpeed = 8f;
     [SerializeField] float m_lockOnMoveSpeed = 3f;
@@ -36,6 +37,7 @@ public class PlayerController : MonoBehaviour
     [SerializeField] float m_sphereRadius = 1f;
     [SerializeField] float m_rayMaxDistance = 1f;
     [SerializeField] LayerMask m_groundMask;
+    public bool GetIsGrounded { get => IsGround(); }
     /// <summary>このコライダーを中心に設置判定のrayを出す</summary>
     [SerializeField] CapsuleCollider m_colider;
     /// <summary>ロックオンに関するフィールド</summary>
@@ -46,25 +48,38 @@ public class PlayerController : MonoBehaviour
     [SerializeField] Collider m_upperKnockOffCol;
     /// <summary>被弾判定に用いるコライダー</summary>
     [SerializeField] Collider m_hitCol;
+    /// <summary>ガードに用いるコライダー</summary>
+    [SerializeField] Collider m_guardCol;
+
+    /// <summary>回避するときの消費魔力</summary>
+    [SerializeField] int m_manaCostDodge = 5;
+    /// <summary>グラップルするときの消費魔力</summary>
+    [SerializeField] int m_manaCostGrapple = 5;
+
     Rigidbody m_rb;
     Animator m_anim;
+
     NewGrapplingManager m_grapple;
+    [SerializeField] PlayerStatus m_status;
 
     private void Start()
     {
         m_rb = GetComponent<Rigidbody>();
         m_loc = FindObjectOfType<LockOnController>();
         m_colider = GetComponent<CapsuleCollider>();
-        m_anim = GetComponent<Animator>();
         m_spdTemp = m_defaultMovingSpeed;
         m_turnSpdTemp = m_turnSpeed;
         m_grapple = GetComponent<NewGrapplingManager>();
+
+        m_anim = GetComponent<Animator>();
+
     }
+
 
     private void Update()
     {
         Debug.Log("velocity.y=" + m_rb.velocity.y);
-        /*ジャンプ攻撃がおかしい、グラップルの挙動がおかしい*/
+
         if (IsGround()) m_jumpAtackCounter = 0;
         Debug.Log($"m_jumpAtackCounter{ m_jumpAtackCounter}");
 
@@ -72,16 +87,11 @@ public class PlayerController : MonoBehaviour
         switch (PlayerState.m_PlayerStates)
         {
             case PlayerStates.InGame:
-                if (Input.GetButtonDown("Fire1") && m_grapple.GetHaveTarget)
-                {
-                    if (!m_anim.GetBool("IsHooking")) m_anim.SetBool("IsHooking", true);
-                }
-
                 if (Input.GetButtonDown("Atack"))
                 {
                     if (IsGround())
                     {
-                        m_anim.SetTrigger("Atack1");
+                        m_anim.SetTrigger("Atack");
                     }
                     else
                     {
@@ -91,7 +101,6 @@ public class PlayerController : MonoBehaviour
                             m_anim.SetTrigger("JumpAtack");
                         }
                     }
-
                 }
 
                 if (m_canMove)//here
@@ -99,22 +108,46 @@ public class PlayerController : MonoBehaviour
                     m_horizontal = Input.GetAxisRaw("Horizontal");
                     m_virtical = Input.GetAxisRaw("Vertical");
 
-                    if (Input.GetButtonDown("Jump") && IsGround())
+                    if (Input.GetButtonDown("Fire1") && m_grapple.GetHaveTarget)
                     {
-                        Jump();
+                        if (!m_anim.GetBool("IsHooking"))
+                        {
+                            m_anim.SetBool("IsHooking", true);
+                            m_status.DecrementMana(m_manaCostGrapple);
+                        }
+                        else if (m_anim.GetBool("IsHooking"))
+                        {
+                            m_anim.SetBool("IsHooking", false);
+                            m_grapple.Grapple();
+                        }
                     }
 
-                    if (Input.GetButtonDown("Sprint"))
+                    if (IsGround())
                     {
-                        Debug.Log("SprintButtonPushed");
-                        if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
-                        else IsSprint = false;
-                    }
+                        if (Input.GetButtonDown("Jump") && !LockOnController.IsLock)
+                        {
+                            Jump();
+                        }
 
-                    if (Input.GetButtonDown("Dodge"))
-                    {
-                        if (m_dir == Vector3.zero) return;
-                        m_anim.SetTrigger("Dodge");
+                        if (Input.GetButtonDown("Sprint"))
+                        {
+                            Debug.Log("SprintButtonPushed");
+                            if (!IsSprint) { m_rb.velocity = Vector3.zero; IsSprint = true; }
+                            else IsSprint = false;
+                        }
+
+                        if (Input.GetButtonDown("Dodge") && m_status.Mana >= m_manaCostDodge)
+                        {
+                            m_status.DecrementMana(m_manaCostDodge);
+                            if (m_dir == Vector3.zero)
+                            {
+                                m_anim.SetTrigger("Guard");
+                            }
+                            else
+                            {
+                                m_anim.SetTrigger("Dodge");
+                            }
+                        }
                     }
                 }
                 else if (!m_canMove && !m_isDodging)
@@ -129,6 +162,7 @@ public class PlayerController : MonoBehaviour
                 break;
         }
         #endregion
+
         #region ベクトルに関する処理
         m_dir = Vector3.forward * m_virtical + Vector3.right * m_horizontal;
 
@@ -141,9 +175,9 @@ public class PlayerController : MonoBehaviour
             m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
 
             Quaternion targetRotation = Quaternion.LookRotation(m_dir);
-            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpdTemp);  // Slerp を使うのがポイント
+            this.transform.rotation = Quaternion.Slerp(this.transform.rotation, targetRotation, Time.deltaTime * m_turnSpdTemp);
         }
-        else
+        else if (LockOnController.IsLock && m_loc.GetTarget != null)
         {
             m_dir = this.transform.TransformDirection(m_dir);
             m_dir.y = 0;  // y 軸方向はゼロにして水平方向のベクトルにする
@@ -195,13 +229,12 @@ public class PlayerController : MonoBehaviour
             m_maxSpeed = m_rb.velocity.magnitude;
         }
 
-
-        m_debugSpdText.text = $"Velo:{m_rb.velocity.magnitude.ToString("F1")}m/s\nMaxSpeed:{m_maxSpeed}";
+        if (m_debugSpdText) m_debugSpdText.text = $"Velo:{m_rb.velocity.magnitude.ToString("F1")}m/s\nMaxSpeed:{m_maxSpeed}";
 
         /*グラップル中あまりにも速度が早いため、y方向の速度も制限する*/
         if (m_rb.velocity.magnitude > m_limitSpeed)
         {
-            m_debugSpdText.color = Color.red;
+            if (m_debugSpdText) m_debugSpdText.color = Color.red;
             m_spdTemp = 0;
             if (m_rb.velocity.y > 0)
             {
@@ -214,16 +247,16 @@ public class PlayerController : MonoBehaviour
         }
         else if (m_rb.velocity.magnitude < m_limitSpeed)
         {
-            m_debugSpdText.color = Color.blue;
+            if (m_debugSpdText) m_debugSpdText.color = Color.blue;
             velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
         }
-        else if (m_rb.velocity.y > 10) //無駄かもしれない
-        {
-            m_spdTemp = 0f;
-            m_rb.velocity *= 0.95f;
-            velo.y = 1;
-            Debug.Log("m_rb.velocity.y。速度超過" + m_rb.velocity.y + m_spdTemp);
-        }
+        //else if (m_rb.velocity.y > 10) //無駄かもしれない
+        //{
+        //    m_spdTemp = 0f;
+        //    m_rb.velocity *= 0.95f;
+        //    velo.y = 1;
+        //    Debug.Log("m_rb.velocity.y。速度超過" + m_rb.velocity.y + m_spdTemp);
+        //}
         //velo.y = m_rb.velocity.y;   // ジャンプした時の y 軸方向の速度を保持する
         Debug.Log("m_rb.velocity.y" + m_rb.velocity.y + "  " + m_spdTemp);
         m_rb.velocity = velo;   // 計算した速度ベクトルをセットする
@@ -304,6 +337,8 @@ public class PlayerController : MonoBehaviour
         #endregion
     }
 
+
+
     public void TestButton()
     {
         m_rb.constraints = RigidbodyConstraints.FreezePositionY;
@@ -315,10 +350,23 @@ public class PlayerController : MonoBehaviour
 
     }
 
+    public void StartGuard()
+    {
+        m_guardCol.gameObject.SetActive(true);
+        m_hitCol.gameObject.SetActive(false);
+    }
+
+    public void EndGuard()
+    {
+        m_guardCol.gameObject.SetActive(false);
+        m_hitCol.gameObject.SetActive(true);
+    }
+
     public void StartDodge()
     {
         m_isDodging = true;
         m_canMove = false;
+        m_hitCol.gameObject.SetActive(false);
         m_anim.SetBool("IsDodging", m_isDodging);
         Debug.Log($"m_isDodging:{m_isDodging}::m_canmove:{m_canMove}");
     }
@@ -327,6 +375,7 @@ public class PlayerController : MonoBehaviour
     {
         m_isDodging = false;
         m_canMove = true;
+        m_hitCol.gameObject.SetActive(true);
         m_anim.SetBool("IsDodging", m_isDodging);
         Debug.Log($"m_isDodging:{m_isDodging}::m_canmove:{m_canMove}");
     }
@@ -377,8 +426,15 @@ public class PlayerController : MonoBehaviour
             m_anim.SetBool("IsJumping", true);
             m_anim.SetFloat("spd", 0f);
         }
+        if (m_audioManager) m_audioManager.PlaySE("ジャンプ");
         m_rb.AddForce(Vector3.up * m_jumpPower, ForceMode.Impulse);
     }
+
+    public void PlaySEOnAnimation(string name)
+    {
+        if (m_audioManager) m_audioManager.PlaySE(name);
+    }
+
     private static RaycastHit m_hit;
     bool IsGround()
     {
@@ -395,5 +451,4 @@ public class PlayerController : MonoBehaviour
             return;
         Gizmos.DrawWireSphere(this.transform.position + m_colider.center + Vector3.down * m_rayMaxDistance, m_sphereRadius);
     }
-
 }

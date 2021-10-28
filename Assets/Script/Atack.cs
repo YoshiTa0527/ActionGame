@@ -4,7 +4,18 @@ using UnityEngine;
 
 public class Atack : MonoBehaviour
 {
+    [SerializeField] UnityEngine.Events.UnityEvent m_OnAtackSuccces;
     [SerializeField] int m_atackPower = 10;
+    [SerializeField] bool m_isEnableHitStop = false;
+    [SerializeField] float m_hitStopScale = 0.8f;
+    [SerializeField] float m_hitStopTime = 0.5f;
+
+
+    protected virtual void Update()
+    {
+
+    }
+
     private void OnTriggerEnter(Collider other)
     {
         OnAtack(other, AtackType.Normal);
@@ -20,6 +31,12 @@ public class Atack : MonoBehaviour
             {
                 item.Hit(m_atackPower, atackType);
             }
+            if (m_isEnableHitStop)
+            {
+                TimeScaleManager.m_hitStopDuration = m_hitStopTime;
+                TimeScaleManager.HitStop(m_hitStopScale);
+            }
+            m_OnAtackSuccces?.Invoke();
         }
     }
 

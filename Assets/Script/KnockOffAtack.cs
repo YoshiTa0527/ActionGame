@@ -13,9 +13,14 @@ public class KnockOffAtack : Atack
     }
     protected override void OnAtack(Collider other, AtackType atackType)
     {
-        Rigidbody rb = other.gameObject.GetComponent<Rigidbody>();
-        other.GetComponent<EnemyController>()?.DisableConstraints();
-        rb.AddForce((this.transform.forward + Vector3.down) * m_downForce, ForceMode.Impulse);
+        Rigidbody[] rbs = other.gameObject.GetComponents<Rigidbody>();
+        foreach (var rb in rbs)
+        {
+            other.GetComponent<EnemyController>()?.DisableConstraints();
+            rb.AddForce((this.transform.forward + Vector3.down) * m_downForce, ForceMode.Impulse);
+        }
+
+
         base.OnAtack(other, atackType);
     }
 }

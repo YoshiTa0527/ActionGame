@@ -34051,7 +34051,7 @@ AnimationClip:
     floatParameter: 0
     intParameter: 0
     messageOptions: 0
-  - time: 0.26666668
+  - time: 0.23333333
     functionName: Grapple
     data: 
     objectReferenceParameter: {fileID: 0}
@@ -34065,14 +34065,28 @@ AnimationClip:
     floatParameter: 0
     intParameter: 0
     messageOptions: 0
-  - time: 0.5
+  - time: 0.26666668
+    functionName: PlaySEOnAnimation
+    data: "\u30D5\u30C3\u30AF"
+    objectReferenceParameter: {fileID: 0}
+    floatParameter: 0
+    intParameter: 0
+    messageOptions: 0
+  - time: 0.46666667
     functionName: PullTargetOnAnimation
     data: 
     objectReferenceParameter: {fileID: 0}
     floatParameter: 0
     intParameter: 0
     messageOptions: 0
-  - time: 0.6333333
+  - time: 0.46666667
+    functionName: PlaySEOnAnimation
+    data: "\u98A8\u5207\u308A\u97F3"
+    objectReferenceParameter: {fileID: 0}
+    floatParameter: 0
+    intParameter: 0
+    messageOptions: 0
+  - time: 0.53333336
     functionName: CanMove
     data: 
     objectReferenceParameter: {fileID: 0}

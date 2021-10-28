@@ -20,7 +20,6 @@ public class HpSliderController : MonoBehaviour
         m_timer += Time.deltaTime;
         if (m_timer > m_inactiveTime)
         {
-         
             this.gameObject.SetActive(false);
         }
     }

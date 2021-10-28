@@ -9,6 +9,9 @@ TagManager:
   - TargetCamera
   - FreeLookCamera1
   - GrapplePoint
+  - HitCollider
+  - GuardCollider
+  - AtackCollider
   layers:
   - Default
   - TransparentFX

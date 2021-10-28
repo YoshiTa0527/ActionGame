@@ -21,6 +21,7 @@ public class LockOnController : MonoBehaviour
     CinemachineVirtualCamera m_targetCamera;
     CinemachineFreeLook m_fcum;
     Transform m_followTemp, m_lookAtTemp;
+
     /// <summary>vcamのプライオリティの初期値を覚えておく</summary>
     int m_priority;
     /// <summary>ターゲットグループに追加するときのradius</summary>
@@ -55,6 +56,7 @@ public class LockOnController : MonoBehaviour
             Debug.Log("through");
             m_followTemp = m_fcum.Follow;
             m_lookAtTemp = m_fcum.LookAt;
+
         }
     }
 
@@ -67,7 +69,7 @@ public class LockOnController : MonoBehaviour
         if (m_target)
         {
             Debug.Log("LockOnContrtoller::targetName=" + m_target.gameObject.name);
-            if (!m_target.IsHookable || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
+            if (!m_target.IsVisible || Vector3.Distance(m_target.transform.position, m_player.transform.position) > m_lockOnRange)
             {
                 UnLockEnemy();
                 m_target = null;
@@ -80,7 +82,7 @@ public class LockOnController : MonoBehaviour
         /*取得した敵を振り分ける。カメラに写っており、ロックオン可能な距離にいる敵をリストに入れる*/
         foreach (var t in targets)
         {
-            if (t.IsHookable && m_lockOnRange > Vector3.Distance(m_player.transform.position, t.transform.position))
+            if (t.IsVisible && m_lockOnRange > Vector3.Distance(m_player.transform.position, t.transform.position))
             {
                 m_targets.Add(t);
                 Debug.Log($"ロックオン可能な敵の数{m_targets.Count}");
@@ -94,9 +96,17 @@ public class LockOnController : MonoBehaviour
 
         if (IsLock)
         {
-            if (m_fcum && m_targetCamera) m_fcum.transform.position = m_targetCamera.transform.position;
+            if (m_fcum && m_targetCamera)//ロックオン中は、フリールックカメラはターゲットカメラに追従する
+            {
+                m_fcum.transform.rotation = m_targetCamera.transform.rotation;
+                m_fcum.transform.position = m_targetCamera.transform.position;
+            }
+
+            Camera.main.transform.position = m_targetCamera.transform.position;
+
             if (m_lockOnMarkerImage && m_target)
-                m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
+                //m_lockOnMarkerImage.rectTransform.position = RectTransformUtility.WorldToScreenPoint(Camera.main, m_target.transform.position);
+                AppearMarker(m_target.transform.position);
 
             if (m_orderedTargets.Count >= 0)
             {
@@ -104,8 +114,8 @@ public class LockOnController : MonoBehaviour
                 if (DpadController.m_dpadRight)
                 {
                     m_targetIndex = (m_targetIndex + 1) % m_orderedTargets.Count;
-                    Debug.Log("LockOnController::IsHookable" + m_orderedTargets[m_targetIndex].IsHookable);
-                    if (m_orderedTargets[m_targetIndex].IsHookable) LockOnEnemy(m_orderedTargets[m_targetIndex]);
+                    Debug.Log("LockOnController::IsHookable" + m_orderedTargets[m_targetIndex].IsVisible);
+                    if (m_orderedTargets[m_targetIndex].IsVisible) LockOnEnemy(m_orderedTargets[m_targetIndex]);
                 }
             }
         }

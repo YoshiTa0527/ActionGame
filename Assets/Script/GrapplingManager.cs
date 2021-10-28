@@ -52,7 +52,7 @@ public class GrapplingManager : MonoBehaviour
         /*ロックオン中ならターゲットにフックをつける*/
         if (LockOnController.IsLock)
         {
-            m_currentTarget = m_lockOn.GetTarget;
+            m_currentTarget = m_lockOn?.GetTarget;
             if (Input.GetButtonDown("Fire1") && Vector3.Distance(this.transform.position, m_currentTarget.transform.position) > 5f)
             {
                 if (!IsHooked)

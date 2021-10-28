@@ -15,21 +15,23 @@ public class NewGrapplingManager : MonoBehaviour
     /// <summary>ボタンを押すと、jointの制限距離を短くする </summary>
     [SerializeField] float m_pullLimit = 1f;
     /// <summary>プレイヤーとターゲットの距離がこの距離以下になるとターゲットは減速する</summary>
-    [SerializeField] float m_disToDecelerateTarget = 2f;
+    [SerializeField] float m_disToTargetForEnemy = 2f;
+    [SerializeField] float m_disToTargetForEnemyInTheAir = 2f;
+    [SerializeField] float m_disToTargetForTarget = 2f;
     /// <summary>ターゲットを減速させるときにかける数</summary>
-    [SerializeField] float m_decelerateSpeed = 0.5f;
-    [SerializeField] float m_pullTime = 0.2f;
+    [SerializeField] float m_decelerateSpeed = 0.85f;
     /// <summary>直前のターゲット</summary>
     GameObject m_latestTarget;
     [SerializeField] bool isEnable;
     bool m_haveTarget;
+    float m_distanceToTarget;
     public bool GetHaveTarget { get => m_haveTarget; }
     bool m_isDrawingLine;
 
     [SerializeField] InOutTracking m_iot;
 
     GameObject m_currentTarget = null;
-
+    PlayerController m_player;
     Rigidbody m_playerRb;
     Rigidbody m_targetRb;
     ConfigurableJoint m_joint;
@@ -46,6 +48,7 @@ public class NewGrapplingManager : MonoBehaviour
         m_joint = GetComponent<ConfigurableJoint>();
         m_lockOn = FindObjectOfType<LockOnController>();
         m_playerRb = this.gameObject.GetComponent<Rigidbody>();
+        m_player = this.gameObject.GetComponent<PlayerController>();
         m_anim = GetComponent<Animator>();
         if (!m_sourcePos) m_sourcePos = this.transform;
         HideLine();
@@ -54,30 +57,19 @@ public class NewGrapplingManager : MonoBehaviour
     private void Update()
     {
         if (!isEnable) return;
-        if (m_currentTarget)
+        if (m_currentTarget && Vector3.Distance(this.transform.position, m_currentTarget.transform.position) >= m_disToTargetForEnemyInTheAir)
         {
-            m_targetText.text = $"Target:{m_currentTarget.name}::{m_haveTarget}";
+            if (m_targetText) m_targetText.text = $"Target:{m_currentTarget.name}::{m_haveTarget}";
             m_haveTarget = true;
         }
         else
         {
-            m_targetText.text = $"Target:{m_currentTarget}::{m_haveTarget}";
+            if (m_targetText) m_targetText.text = $"Target:{m_currentTarget}::{m_haveTarget}";
             m_haveTarget = false;
         }
 
-
-
-
-
         if (IsHooked)
         {
-            m_timer += Time.deltaTime;
-            if (m_timer > m_pullTime)
-            {
-                m_timer = 0;
-                // PullTarget(m_joint, m_currentTarget);
-            }
-
             if (m_currentTarget.tag == "Enemy")
             {
                 EnemyController enemyController = m_currentTarget.GetComponent<EnemyController>();
@@ -86,7 +78,8 @@ public class NewGrapplingManager : MonoBehaviour
                     EnableConstraints(this.gameObject);
                     m_targetRb = m_currentTarget.GetComponent<Rigidbody>();
                     m_targetRb.velocity = Vector3.zero;
-                    if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget)
+
+                    if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToTargetForEnemy)
                     {
                         Debug.Log("敵に近づいた");
                         LoseHook(m_joint);
@@ -96,14 +89,13 @@ public class NewGrapplingManager : MonoBehaviour
                 {
                     EnableConstraints(m_currentTarget);
                     DisableConstraints(this.gameObject);
-                    float yAbs = Mathf.Abs(m_currentTarget.transform.position.y - this.transform.position.y);
-                    if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget
-                        && this.transform.position.y >= m_currentTarget.transform.position.y)
+                    bool isHigher = this.transform.position.y >= m_currentTarget.transform.position.y;
+                    float dis = Vector3.Distance(this.transform.position, m_currentTarget.transform.position);
+                    if (dis <= m_disToTargetForEnemyInTheAir && isHigher)
                     {
                         Debug.Log("高さほぼ一緒");
                         m_playerRb = this.gameObject.GetComponent<Rigidbody>();
                         m_playerRb.velocity = Vector3.zero;
-                        // m_playerRb.AddForce(Vector3.up * 5f, ForceMode.Impulse);
                         LoseHook(m_joint);
                     }
                 }
@@ -111,28 +103,12 @@ public class NewGrapplingManager : MonoBehaviour
             else if (m_currentTarget.tag == "GrapplePoint")
             {
                 DisableConstraints(this.gameObject);
-                float yAbs = Mathf.Abs(m_currentTarget.transform.position.y - this.transform.position.y);
-                //if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget //&& CalcValue(yAbs, 5f)
-                //    && this.transform.position.y > m_currentTarget.transform.position.y)
-                //{
-                //    Debug.Log("Grapple::十分近づいた");
-                //    m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-                //    //m_playerRb.velocity = Vector3.zero;
-                //    //m_playerRb.AddForce((m_currentTarget.transform.position - this.transform.position + new Vector3(0, 0.5f, 0)) * 4.5f, ForceMode.Impulse);
-                //    Debug.Log("Grapple::アドフォース！");
-                //    LoseHook(m_joint);
-                //}
 
-                if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToDecelerateTarget)
+                if (Vector3.Distance(this.transform.position, m_currentTarget.transform.position) <= m_disToTargetForTarget)
                 {
-                    Debug.Log("Grapple::近づいた。yAbs=" + yAbs);
-                    if (this.transform.position.y < m_currentTarget.transform.position.y)
-                    {
-                        LoseHook(m_joint);
-                        //m_playerRb.AddForce((this.transform.forward + new Vector3(0, 1, 0) / 5) * 10, ForceMode.Impulse);
-
-                        Debug.Log("Grapple::下にある");
-                    }
+                    m_playerRb = this.gameObject.GetComponent<Rigidbody>();
+                    m_playerRb.velocity *= m_decelerateSpeed;
+                    LoseHook(m_joint);
                 }
             }
 
@@ -140,21 +116,6 @@ public class NewGrapplingManager : MonoBehaviour
         }
         else
         {
-            //if (m_latestTarget)
-            //{
-            //    if (Vector3.Distance(this.transform.position, m_latestTarget.transform.position) <= m_disToDecelerateTarget)
-            //    {
-            //        if (this.transform.position.y > m_latestTarget.transform.position.y + 5f)
-            //        {
-            //            m_playerRb = this.gameObject.GetComponent<Rigidbody>();
-            //            m_playerRb.velocity = this.transform.forward * 100;
-            //            m_playerRb.AddForce(this.transform.forward * 100, ForceMode.Impulse);
-            //            Debug.Log("Grapple::アドフォース！");
-            //        }
-
-            //    }
-            //}
-
             Target();
         }
     }
@@ -163,7 +124,7 @@ public class NewGrapplingManager : MonoBehaviour
     {
         if (LockOnController.IsLock)
         {
-            m_currentTarget = m_lockOn.GetTarget;
+            m_currentTarget = m_lockOn?.GetTarget;
         }
         else if (!LockOnController.IsLock && m_iot.GetGrapplingTarget)
         {
@@ -185,7 +146,11 @@ public class NewGrapplingManager : MonoBehaviour
             this.transform.LookAt(lookAtPos);
             Hook(m_joint, m_currentTarget);
         }
-
+        else if (IsHooked)
+        {
+            IsHooked = false;
+            LoseHook(m_joint);
+        }
     }
 
     /// <summary>
@@ -196,16 +161,21 @@ public class NewGrapplingManager : MonoBehaviour
     /// <returns></returns>
     bool CalcValue(float x, float threshold)
     {
-        if (-1 * threshold < x && x < threshold) return true;
-        else return false;
+        return -1 * threshold < x && x < threshold;
     }
 
     void Hook(ConfigurableJoint joint, GameObject target)
     {
         m_stateText.text = "Hook";
         m_targetRb = target.GetComponent<Rigidbody>();
+        m_distanceToTarget = Vector3.Distance(this.transform.position, m_currentTarget.transform.position);
         if (m_targetRb)
         {
+            if (m_targetRb.gameObject.CompareTag("Enemy"))
+            {
+                EnemyController enemyController = m_targetRb.gameObject.GetComponent<EnemyController>();
+                enemyController.EnemyStateProp = EnemyController.EnemyState.Hooked;
+            }
             joint.connectedBody = m_targetRb;
             var cj = joint.linearLimit;
             m_playerRb = this.gameObject.GetComponent<Rigidbody>();
@@ -263,6 +233,45 @@ public class NewGrapplingManager : MonoBehaviour
         joint.linearLimit = cj;
     }
 
+    /// <summary>
+    /// 徐々にlimitを短くする
+    /// </summary>
+    void TowingTarget(ConfigurableJoint joint)
+    {
+        m_stateText.text = "PullTarget";
+
+        var cj = joint.linearLimit;
+
+        while (true)
+        {
+            cj.limit *= 0.99f;
+            joint.linearLimit = cj;
+
+            if (joint.linearLimit.limit <= 1) break;
+        }
+
+        Debug.Log("end");
+    }
+
+    IEnumerator TowingTargetEnum()
+    {
+        var cj = m_joint.linearLimit;
+        while (true)
+        {
+            if (m_joint.linearLimit.limit <= 1 || !IsHooked) break;
+
+            cj.limit *= 0.9f;
+            m_joint.linearLimit = cj;
+
+            yield return new WaitForSeconds(0.1f);
+        }
+    }
+
+    public void TowingTargetOnAnimation()
+    {
+        StartCoroutine(TowingTargetEnum());
+    }
+
     void DrawLine(Vector3 source, Vector3 destination)
     {
         m_isDrawingLine = true;
@@ -292,7 +301,6 @@ public class NewGrapplingManager : MonoBehaviour
     void DisableConstraints(GameObject target)
     {
         Rigidbody rb = target.GetComponent<Rigidbody>();
-        rb.constraints = RigidbodyConstraints.None;
-        rb.constraints = RigidbodyConstraints.FreezeRotation;
+        rb.constraints = RigidbodyConstraints.None | RigidbodyConstraints.FreezeRotation;
     }
 }
